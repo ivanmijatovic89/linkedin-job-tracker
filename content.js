@@ -13,6 +13,10 @@
     return Math.abs(h).toString(36);
   }
 
+  function normalizeText(str) {
+    return (str || '').trim().replace(/\s+/g, ' ');
+  }
+
   // ── Storage ───────────────────────────────────────────────────────────────
 
   function loadData(key) {
@@ -95,7 +99,7 @@
   // ── Injection state ───────────────────────────────────────────────────────
 
   const injectedCards = new WeakSet(); // DOM elements already processed
-  const injectedJobIds = new Set();    // right-panel job IDs already shown
+  const injectedJobIds = new Set();    // right-panel numeric IDs already shown
   const injecting = new Set();
 
   async function inject(card, jobId) {
@@ -116,25 +120,39 @@
     injecting.delete(card);
   }
 
+  // ── Shared key computation ────────────────────────────────────────────────
+  // Both columns must use the same storage key for the same job.
+  // We hash (title || company) — the same data available in both columns.
+
+  function makeJobId(title, company) {
+    return `ljt_h_${simpleHash(title + '||' + company)}`;
+  }
+
   // ── LEFT COLUMN ───────────────────────────────────────────────────────────
   // Cards are div[role="button"][componentkey] containing a dismiss button.
-  // No numeric job ID in DOM — use hash of title + company.
+  // Title comes from the dismiss button aria-label; company from paragraph text.
 
   function processLeftCards() {
     document.querySelectorAll('div[role="button"][componentkey]').forEach(card => {
-      if (injectedCards.has(card)) return;
+      // If already injected, check the panel wasn't removed by LinkedIn re-render
+      if (injectedCards.has(card)) {
+        if (!card.querySelector('.ljt-panel')) {
+          injectedCards.delete(card);
+          injecting.delete(card);
+        } else {
+          return;
+        }
+      }
 
-      // Must have a "Dismiss X job" button — this confirms it's a job card
       const dismissBtn = card.querySelector('button[aria-label^="Dismiss "]');
       if (!dismissBtn) return;
 
       const label = dismissBtn.getAttribute('aria-label') || '';
-      const jobTitle = label.replace(/^Dismiss /, '').replace(/ job$/, '').trim();
+      const jobTitle = normalizeText(label.replace(/^Dismiss /, '').replace(/ job$/, ''));
       if (!jobTitle) return;
 
-      // Get company name: first <p> text that isn't the job title and isn't metadata
       const company = [...card.querySelectorAll('p')]
-        .map(p => p.textContent.trim())
+        .map(p => normalizeText(p.textContent))
         .find(t =>
           t &&
           t !== jobTitle &&
@@ -145,31 +163,30 @@
           !t.includes('Posted')
         ) || '';
 
-      const jobId = `ljt_h_${simpleHash(jobTitle + '||' + company)}`;
-      inject(card, jobId);
+      inject(card, makeJobId(jobTitle, company));
     });
   }
 
   // ── RIGHT COLUMN ──────────────────────────────────────────────────────────
-  // The job detail panel has an <a> link to /jobs/view/{id}/ for the job title.
-  // Many other links also contain currentJobId — we only want one panel.
-  // Strategy: find the job title <a> (href /jobs/view/), get its ID and container.
+  // The job title <a> links to /jobs/view/{id}/.
+  // We derive the job title from that anchor's text and company from a nearby
+  // /company/ link — computing the same hash as the left column.
 
   function processRightPanel() {
-    // The job title in the right panel links to /jobs/view/{id}/
+    const seenThisScan = new Set();
+
     document.querySelectorAll('a[href*="/jobs/view/"]').forEach(a => {
       const m = a.getAttribute('href').match(/\/jobs\/view\/(\d+)/);
       if (!m) return;
-      const jobId = `ljt_${m[1]}`;
+      const numericId = m[1];
 
-      // Only one panel per right-panel job
-      if (injectedJobIds.has(jobId)) return;
+      // Only process the first link per numeric ID per scan
+      if (seenThisScan.has(numericId)) return;
+      seenThisScan.add(numericId);
 
-      // Find the container: go up to a sizeable block that contains Apply/Save
-      // The right panel header section wraps: company logo, job title, Apply, Save
+      // Find the container with Apply/Save buttons
       let container = a.parentElement;
       while (container && container !== document.body) {
-        // Stop when we find a block that contains both the title and action buttons
         const hasApply = container.querySelector('a[aria-label*="Apply"], button[aria-label="Save the job"]');
         const rect = container.getBoundingClientRect();
         if (hasApply && rect.height > 80) break;
@@ -177,12 +194,27 @@
       }
 
       if (!container || container === document.body) return;
+
+      // Compute key using same hash strategy as left column
+      // The <a> text IS the job title; company comes from the /company/ link
+      const jobTitle = normalizeText(a.textContent);
+      const companyLink = container.querySelector('a[href*="/company/"]');
+      const company = companyLink ? normalizeText(companyLink.textContent) : '';
+      const jobId = jobTitle ? makeJobId(jobTitle, company) : `ljt_${numericId}`;
+
+      // If we already marked this numericId injected but the panel is gone, reset
+      if (injectedJobIds.has(numericId) && !container.querySelector('.ljt-panel')) {
+        injectedJobIds.delete(numericId);
+      }
+
       if (container.querySelector('.ljt-panel')) {
-        injectedJobIds.add(jobId);
+        injectedJobIds.add(numericId);
         return;
       }
 
-      injectedJobIds.add(jobId);
+      // A new job is selected — clear stale IDs and inject
+      injectedJobIds.clear();
+      injectedJobIds.add(numericId);
       inject(container, jobId);
     });
   }
