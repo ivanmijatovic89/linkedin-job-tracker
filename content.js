@@ -29,6 +29,17 @@
     chrome.storage.local.set({ [key]: value });
   }
 
+  // Sync all panels with the same jobId when storage changes (cross-panel live update)
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area !== 'local') return;
+    Object.entries(changes).forEach(([key, { newValue }]) => {
+      if (!newValue) return;
+      document.querySelectorAll(`.ljt-panel[data-ljt-id="${CSS.escape(key)}"]`).forEach(panel => {
+        panel._ljtSync?.(newValue);
+      });
+    });
+  });
+
   // ── UI builder ────────────────────────────────────────────────────────────
 
   function renderStars(wrap, active, preview = false) {
@@ -92,6 +103,18 @@
       renderStars(stars, curRating);
       saveData(jobId, { status: sel.value, rating: curRating });
     });
+
+    // Expose a sync method so the storage listener can update this panel from outside
+    panel._ljtSync = ({ status: s, rating: r }) => {
+      if (sel.value !== s) {
+        sel.value = s;
+        sel.className = `ljt-select ljt-s-${s.toLowerCase()}`;
+      }
+      if (curRating !== r) {
+        curRating = r;
+        renderStars(stars, curRating);
+      }
+    };
 
     return panel;
   }
