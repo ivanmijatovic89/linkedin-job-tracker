@@ -1,0 +1,129 @@
+/* ── LinkedIn Jobs Tracker Panel ──────────────────────────────────────────── */
+
+.ljt-panel {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 6px 12px 4px;
+  padding: 5px 8px;
+  background: #f3f4f6;
+  border: 1px solid #dde1e7;
+  border-radius: 6px;
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 11px;
+  line-height: 1;
+  box-sizing: border-box;
+  user-select: none;
+  position: relative;
+  z-index: 1;
+  transition: border-color 0.15s ease;
+}
+
+.ljt-panel:hover {
+  border-color: #b0b8c4;
+}
+
+/* ── Status Select ───────────────────────────────────────────────────────── */
+
+.ljt-select {
+  appearance: none;
+  -webkit-appearance: none;
+  border: 1px solid #c8cdd5;
+  border-radius: 4px;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%23888'/%3E%3C/svg%3E") no-repeat right 6px center;
+  background-size: 6px 4px;
+  padding: 3px 20px 3px 7px;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  outline: none;
+  transition: border-color 0.12s, background-color 0.12s, color 0.12s;
+  white-space: nowrap;
+}
+
+.ljt-select:hover {
+  border-color: #9ca3af;
+}
+
+.ljt-select:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.15);
+}
+
+/* Status color states */
+.ljt-select.ljt-s-none {
+  background-color: #fff;
+  color: #6b7280;
+}
+
+.ljt-select.ljt-s-seen {
+  background-color: #f1f2f4;
+  border-color: #9ca3af;
+  color: #4b5563;
+}
+
+.ljt-select.ljt-s-applied {
+  background-color: #ecfdf5;
+  border-color: #6ee7b7;
+  color: #065f46;
+}
+
+.ljt-select.ljt-s-skipped {
+  background-color: #fff1f2;
+  border-color: #fca5a5;
+  color: #991b1b;
+}
+
+/* ── Stars ───────────────────────────────────────────────────────────────── */
+
+.ljt-stars {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  cursor: pointer;
+  margin-left: 2px;
+}
+
+.ljt-star {
+  font-size: 14px;
+  line-height: 1;
+  color: #d1d5db;
+  transition: color 0.1s ease, transform 0.1s ease;
+  display: inline-block;
+}
+
+.ljt-star--on {
+  color: #f59e0b;
+}
+
+.ljt-star--preview {
+  color: #fbbf24;
+  transform: scale(1.15);
+}
+
+.ljt-stars:hover .ljt-star:not(.ljt-star--preview) {
+  color: #d1d5db;
+}
+
+/* ── Panel color accent based on status (left border) ───────────────────── */
+
+.ljt-panel:has(.ljt-s-seen) {
+  border-left: 3px solid #9ca3af;
+}
+
+.ljt-panel:has(.ljt-s-applied) {
+  border-left: 3px solid #10b981;
+  background: #f0fdf8;
+}
+
+.ljt-panel:has(.ljt-s-skipped) {
+  border-left: 3px solid #ef4444;
+  background: #fff5f5;
+}
+
+/* Fallback for browsers without :has() support */
+.ljt-panel {
+  border-left-width: 3px;
+}

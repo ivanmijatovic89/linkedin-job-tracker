@@ -1,0 +1,64 @@
+# LinkedIn Jobs Tracker
+
+A Chrome Extension (Manifest V3) that adds status tracking and star ratings to LinkedIn job cards.
+
+## Features
+
+- **Status tracking**: Mark each job as `None`, `Seen`, `Applied`, or `Skipped`
+- **Star ratings**: Rate jobs from 1–5 stars
+- **Color coding**: Green for Applied, Red for Skipped, Gray for Seen
+- **Persistent storage**: All data saved locally via `chrome.storage.local`
+- **Dynamic injection**: Works with LinkedIn's infinite scroll via MutationObserver
+
+## File Structure
+
+```
+linkedin-chrome-addon/
+├── manifest.json
+├── content.js
+├── styles.css
+└── README.md
+```
+
+## Installation
+
+1. Open Chrome and navigate to `chrome://extensions`
+2. Enable **Developer mode** (toggle in the top-right corner)
+3. Click **Load unpacked**
+4. Select this folder (`linkedin-chrome-addon/`)
+5. Navigate to [linkedin.com/jobs](https://www.linkedin.com/jobs/) — the panels appear automatically on each job card
+
+## Usage
+
+Each job card gets a small inline panel at the bottom:
+
+| Element | Action |
+|---|---|
+| Status dropdown | Select `None` / `Seen` / `Applied` / `Skipped` |
+| Stars (★★★★★) | Click to rate 1–5; click the same star again to clear |
+
+Changes save instantly. Data persists across page reloads and browser restarts.
+
+## Storage
+
+Data is stored in `chrome.storage.local` with this shape:
+
+```json
+{
+  "ljt_1234567890": { "status": "Applied", "rating": 4 }
+}
+```
+
+The key is derived from LinkedIn's `data-occludable-job-id` attribute when available, or a hash of the job title + company name as a fallback.
+
+## Updating / Reloading
+
+After editing any file, go to `chrome://extensions` and click the **reload** icon on the extension card, then refresh the LinkedIn tab.
+
+## Clearing Data
+
+To reset all tracked jobs, open the Chrome DevTools console on any LinkedIn page and run:
+
+```js
+chrome.storage.local.clear(() => console.log('Cleared'));
+```
