@@ -98,56 +98,97 @@
 
   // ── Injection state ───────────────────────────────────────────────────────
 
-  const injectedCards = new WeakSet(); // DOM elements already processed
-  const injectedJobIds = new Set();    // right-panel numeric IDs already shown
   const injecting = new Set();
+  const compKeyToJobId = new Map(); // componentkey UUID → jobId (survives element replacement)
+  const watchedCards = new WeakSet(); // cards with per-card observers attached
+  const injectedJobIds = new Set();   // right-panel numeric IDs already shown
 
-  async function inject(card, jobId) {
-    if (injectedCards.has(card)) return;
-    if (card.querySelector('.ljt-panel')) { injectedCards.add(card); return; }
+  // ── Per-card watcher ──────────────────────────────────────────────────────
+  // Attaches a MutationObserver directly to a card element.
+  // If LinkedIn removes our panel (during re-renders), re-inject after a delay.
+
+  function watchCard(card, jobId) {
+    if (watchedCards.has(card)) return;
+    watchedCards.add(card);
+
+    const obs = new MutationObserver(() => {
+      if (!card.isConnected) {
+        obs.disconnect();
+        return;
+      }
+      if (!card.querySelector('.ljt-panel') && !injecting.has(card)) {
+        // Panel was removed — wait for LinkedIn to finish its render, then re-inject
+        setTimeout(() => appendPanel(card, jobId), 150);
+      }
+    });
+    obs.observe(card, { childList: true });
+  }
+
+  async function appendPanel(card, jobId) {
+    if (!card.isConnected) return;
+    if (card.querySelector('.ljt-panel')) return;
     if (injecting.has(card)) return;
     injecting.add(card);
 
     const data = await loadData(jobId);
-    if (card.querySelector('.ljt-panel')) {
-      injectedCards.add(card);
+
+    if (!card.isConnected || card.querySelector('.ljt-panel')) {
       injecting.delete(card);
       return;
     }
 
     card.appendChild(buildPanel(jobId, data));
-    injectedCards.add(card);
     injecting.delete(card);
+    watchCard(card, jobId); // ensure watcher is still attached
+  }
+
+  // First-time injection for a card
+  async function inject(card, jobId) {
+    if (card.querySelector('.ljt-panel')) {
+      watchCard(card, jobId);
+      return;
+    }
+    if (injecting.has(card)) return;
+
+    await appendPanel(card, jobId);
+    watchCard(card, jobId);
   }
 
   // ── Shared key computation ────────────────────────────────────────────────
-  // Both columns must use the same storage key for the same job.
-  // We hash (title || company) — the same data available in both columns.
 
   function makeJobId(title, company) {
     return `ljt_h_${simpleHash(title + '||' + company)}`;
   }
 
   // ── LEFT COLUMN ───────────────────────────────────────────────────────────
-  // Cards are div[role="button"][componentkey] containing a dismiss button.
-  // Title comes from the dismiss button aria-label; company from paragraph text.
 
   function processLeftCards() {
-    document.querySelectorAll('div[role="button"][componentkey]').forEach(card => {
-      // If already injected, check the panel wasn't removed by LinkedIn re-render
-      if (injectedCards.has(card)) {
-        if (!card.querySelector('.ljt-panel')) {
-          injectedCards.delete(card);
-          injecting.delete(card);
-        } else {
-          return;
-        }
+    // Pass 1: re-check all known componentkeys — find them regardless of role/tag changes
+    compKeyToJobId.forEach((jobId, compKey) => {
+      const card = document.querySelector(`[componentkey="${compKey}"]`);
+      if (!card) return; // scrolled away
+      if (card.querySelector('.ljt-panel')) {
+        watchCard(card, jobId);
+        return;
       }
+      if (!injecting.has(card)) inject(card, jobId);
+    });
 
-      const dismissBtn = card.querySelector('button[aria-label^="Dismiss "]');
-      if (!dismissBtn) return;
+    // Pass 2: discover new cards via dismiss button
+    document.querySelectorAll('button[aria-label^="Dismiss "]').forEach(btn => {
+      // Walk up to the card container (large enough block)
+      let card = btn.parentElement;
+      while (card && card !== document.body) {
+        const rect = card.getBoundingClientRect();
+        if (rect.height > 50 && rect.width > 150) break;
+        card = card.parentElement;
+      }
+      if (!card || card === document.body) return;
 
-      const label = dismissBtn.getAttribute('aria-label') || '';
+      const compKey = card.getAttribute('componentkey') || '';
+      if (compKey && compKeyToJobId.has(compKey)) return; // already handled in pass 1
+
+      const label = btn.getAttribute('aria-label') || '';
       const jobTitle = normalizeText(label.replace(/^Dismiss /, '').replace(/ job$/, ''));
       if (!jobTitle) return;
 
@@ -163,14 +204,15 @@
           !t.includes('Posted')
         ) || '';
 
-      inject(card, makeJobId(jobTitle, company));
+      const jobId = makeJobId(jobTitle, company);
+      if (compKey) compKeyToJobId.set(compKey, jobId);
+      if (!card.querySelector('.ljt-panel') && !injecting.has(card)) {
+        inject(card, jobId);
+      }
     });
   }
 
   // ── RIGHT COLUMN ──────────────────────────────────────────────────────────
-  // The job title <a> links to /jobs/view/{id}/.
-  // We derive the job title from that anchor's text and company from a nearby
-  // /company/ link — computing the same hash as the left column.
 
   function processRightPanel() {
     const seenThisScan = new Set();
@@ -180,11 +222,9 @@
       if (!m) return;
       const numericId = m[1];
 
-      // Only process the first link per numeric ID per scan
       if (seenThisScan.has(numericId)) return;
       seenThisScan.add(numericId);
 
-      // Find the container with Apply/Save buttons
       let container = a.parentElement;
       while (container && container !== document.body) {
         const hasApply = container.querySelector('a[aria-label*="Apply"], button[aria-label="Save the job"]');
@@ -195,14 +235,11 @@
 
       if (!container || container === document.body) return;
 
-      // Compute key using same hash strategy as left column
-      // The <a> text IS the job title; company comes from the /company/ link
       const jobTitle = normalizeText(a.textContent);
       const companyLink = container.querySelector('a[href*="/company/"]');
       const company = companyLink ? normalizeText(companyLink.textContent) : '';
       const jobId = jobTitle ? makeJobId(jobTitle, company) : `ljt_${numericId}`;
 
-      // If we already marked this numericId injected but the panel is gone, reset
       if (injectedJobIds.has(numericId) && !container.querySelector('.ljt-panel')) {
         injectedJobIds.delete(numericId);
       }
@@ -212,7 +249,6 @@
         return;
       }
 
-      // A new job is selected — clear stale IDs and inject
       injectedJobIds.clear();
       injectedJobIds.add(numericId);
       inject(container, jobId);
