@@ -1,26 +1,26 @@
 /* ── Variables ──────────────────────────────────────────────────────────────── */
 :root {
-  --bg:          #080b12;
-  --surface:     #0d1018;
-  --surface-2:   #131720;
-  --surface-3:   #191f2c;
-  --border:      rgba(255, 255, 255, 0.07);
-  --border-2:    rgba(255, 255, 255, 0.12);
+  --bg:          #13151f;
+  --surface:     #1b1e2b;
+  --surface-2:   #21253a;
+  --surface-3:   #272c40;
+  --border:      rgba(255, 255, 255, 0.1);
+  --border-2:    rgba(255, 255, 255, 0.18);
 
   --accent:      #f0a515;
-  --accent-dim:  rgba(240, 165, 21, 0.12);
-  --accent-glow: rgba(240, 165, 21, 0.25);
+  --accent-dim:  rgba(240, 165, 21, 0.15);
+  --accent-glow: rgba(240, 165, 21, 0.28);
 
-  --applied:     #10b981;
-  --applied-dim: rgba(16, 185, 129, 0.1);
-  --seen:        #6366f1;
-  --seen-dim:    rgba(99, 102, 241, 0.1);
-  --skip:        #f43f5e;
-  --skip-dim:    rgba(244, 63, 94, 0.1);
+  --applied:     #34d399;
+  --applied-dim: rgba(52, 211, 153, 0.12);
+  --seen:        #818cf8;
+  --seen-dim:    rgba(129, 140, 248, 0.12);
+  --skip:        #fb7185;
+  --skip-dim:    rgba(251, 113, 133, 0.12);
 
-  --text:        #d4dce8;
-  --text-2:      #8a96a8;
-  --text-3:      #3d4558;
+  --text:        #eef1f8;
+  --text-2:      #9aa5bc;
+  --text-3:      #5a6480;
 
   --font-ui:     'Barlow Condensed', sans-serif;
   --font-data:   'IBM Plex Mono', monospace;
@@ -32,7 +32,7 @@
 /* ── Reset & Base ──────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html { font-size: 15px; }
+html { font-size: 16px; }
 
 body {
   font-family: var(--font-data);
@@ -78,7 +78,7 @@ body::before {
 
 /* ── Header ─────────────────────────────────────────────────────────────────── */
 .header {
-  background: linear-gradient(180deg, rgba(13,16,24,0.98) 0%, rgba(13,16,24,0.90) 100%);
+  background: linear-gradient(180deg, rgba(25,28,42,0.98) 0%, rgba(25,28,42,0.92) 100%);
   backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
   position: sticky;
@@ -127,7 +127,7 @@ body::before {
 
 .header-sub {
   font-family: var(--font-data);
-  font-size: 0.6rem;
+  font-size: 0.65rem;
   letter-spacing: 0.18em;
   text-transform: uppercase;
   color: var(--text-3);
@@ -141,8 +141,8 @@ body::before {
 }
 
 .header-time {
-  font-size: 0.7rem;
-  color: var(--text-3);
+  font-size: 0.75rem;
+  color: var(--text-2);
   letter-spacing: 0.04em;
   font-family: var(--font-data);
 }
@@ -247,11 +247,11 @@ body::before {
 
 .stat-label {
   font-family: var(--font-ui);
-  font-size: 0.75rem;
+  font-size: 0.8rem;
   font-weight: 500;
-  letter-spacing: 0.12em;
+  letter-spacing: 0.1em;
   text-transform: uppercase;
-  color: var(--text-3);
+  color: var(--text-2);
 }
 
 /* ── Controls Bar ───────────────────────────────────────────────────────────── */
@@ -290,13 +290,13 @@ body::before {
   border-radius: var(--radius);
   color: var(--text);
   font-family: var(--font-data);
-  font-size: 0.8rem;
+  font-size: 0.85rem;
   outline: none;
   transition: border-color 0.2s, background 0.2s;
   -webkit-appearance: none;
 }
 
-.search-input::placeholder { color: var(--text-3); }
+.search-input::placeholder { color: var(--text-3); font-size: 0.82rem; }
 
 .search-input:focus {
   border-color: var(--accent);
@@ -317,9 +317,9 @@ body::before {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  color: var(--text-2);
+  color: var(--text);
   font-family: var(--font-ui);
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   font-weight: 500;
   letter-spacing: 0.04em;
   outline: none;
@@ -388,11 +388,11 @@ body::before {
 
 .toggle-label {
   font-family: var(--font-ui);
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   font-weight: 500;
   letter-spacing: 0.06em;
   text-transform: uppercase;
-  color: var(--text-3);
+  color: var(--text-2);
   transition: color 0.2s;
 }
 
@@ -467,7 +467,7 @@ body::before {
 
 .job-title {
   font-family: var(--font-ui);
-  font-size: 1.05rem;
+  font-size: 1.15rem;
   font-weight: 600;
   letter-spacing: 0.02em;
   color: var(--text);
@@ -481,6 +481,18 @@ body::before {
 
 .no-title { color: var(--text-3); font-style: italic; }
 
+.job-title-link {
+  color: inherit;
+  text-decoration: none;
+}
+
+.job-title-link:hover {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1px;
+}
+
 .job-rating {
   display: flex;
   gap: 2px;
@@ -488,7 +500,7 @@ body::before {
   padding-top: 1px;
 }
 
-.star { font-size: 0.7rem; color: var(--text-3); }
+.star { font-size: 0.8rem; color: var(--text-3); }
 .star--on { color: var(--accent); }
 
 .job-card-bottom {
@@ -499,7 +511,7 @@ body::before {
 }
 
 .job-meta {
-  font-size: 0.72rem;
+  font-size: 0.8rem;
   color: var(--text-2);
   white-space: nowrap;
   overflow: hidden;
@@ -517,11 +529,11 @@ body::before {
 
 .job-status-pill {
   font-family: var(--font-ui);
-  font-size: 0.65rem;
+  font-size: 0.72rem;
   font-weight: 600;
-  letter-spacing: 0.1em;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  padding: 2px 8px;
+  padding: 2px 9px;
   border-radius: 2px;
 }
 
@@ -530,8 +542,8 @@ body::before {
 .status-skip-pill    { background: var(--skip-dim);    color: var(--skip); }
 
 .job-date {
-  font-size: 0.68rem;
-  color: var(--text-3);
+  font-size: 0.75rem;
+  color: var(--text-2);
   letter-spacing: 0.02em;
   white-space: nowrap;
 }
@@ -567,9 +579,9 @@ body::before {
 
 .group-label {
   font-family: var(--font-ui);
-  font-size: 0.8rem;
+  font-size: 0.9rem;
   font-weight: 700;
-  letter-spacing: 0.14em;
+  letter-spacing: 0.12em;
   text-transform: uppercase;
 }
 
@@ -579,9 +591,9 @@ body::before {
 
 .group-count {
   font-family: var(--font-ui);
-  font-size: 0.75rem;
+  font-size: 0.78rem;
   font-weight: 500;
-  color: var(--text-3);
+  color: var(--text-2);
   background: var(--surface-3);
   padding: 1px 7px;
   border-radius: 10px;
