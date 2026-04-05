@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Job Tracker</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="dashboard.css">
+</head>
+<body>
+  <div class="bg-grid" aria-hidden="true"></div>
+
+  <header class="header">
+    <div class="header-inner">
+      <div class="header-brand">
+        <svg class="header-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <polygon points="12,2 22,7 22,17 12,22 2,17 2,7" stroke="currentColor" stroke-width="1.5" fill="none"/>
+          <polygon points="12,6 18,9.5 18,16.5 12,20 6,16.5 6,9.5" stroke="currentColor" stroke-width="1" fill="currentColor" opacity="0.15"/>
+        </svg>
+        <div class="header-title-wrap">
+          <h1 class="header-title">Job Tracker</h1>
+          <span class="header-sub">LinkedIn Jobs Intelligence</span>
+        </div>
+      </div>
+      <div class="header-actions">
+        <span class="header-time">Updated <span id="last-updated">—</span></span>
+        <button class="btn-refresh" id="btn-refresh" title="Refresh data">
+          <svg class="refresh-icon" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4 10a6 6 0 0 1 6-6 6 6 0 0 1 4.243 1.757L16 7.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <path d="M16 10a6 6 0 0 1-6 6 6 6 0 0 1-4.243-1.757L4 12.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+            <polyline points="16,4 16,7.5 12.5,7.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            <polyline points="4,16 4,12.5 7.5,12.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          Refresh
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div class="stats-bar">
+    <div class="stat-card stat-total">
+      <span class="stat-num" id="stat-total">—</span>
+      <span class="stat-label">Total Tracked</span>
+      <div class="stat-bar-fill"></div>
+    </div>
+    <div class="stat-card stat-applied">
+      <span class="stat-num" id="stat-applied">—</span>
+      <span class="stat-label">Applied</span>
+      <div class="stat-bar-fill"></div>
+    </div>
+    <div class="stat-card stat-seen">
+      <span class="stat-num" id="stat-seen">—</span>
+      <span class="stat-label">Seen</span>
+      <div class="stat-bar-fill"></div>
+    </div>
+    <div class="stat-card stat-skip">
+      <span class="stat-num" id="stat-skip">—</span>
+      <span class="stat-label">Skipped</span>
+      <div class="stat-bar-fill"></div>
+    </div>
+  </div>
+
+  <div class="controls-bar">
+    <div class="search-wrap">
+      <svg class="search-icon" viewBox="0 0 20 20" fill="none">
+        <circle cx="9" cy="9" r="6" stroke="currentColor" stroke-width="1.5"/>
+        <path d="M13.5 13.5L17 17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+      </svg>
+      <input type="search" id="search" class="search-input" placeholder="Search title, company, location…" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="ctrl-row">
+      <select id="filter-status" class="ctrl-select">
+        <option value="">All Status</option>
+        <option value="Applied">Applied</option>
+        <option value="Seen">Seen</option>
+        <option value="Skip">Skip</option>
+      </select>
+      <select id="sort" class="ctrl-select">
+        <option value="newest">Newest first</option>
+        <option value="oldest">Oldest first</option>
+        <option value="title">Title A→Z</option>
+        <option value="company">Company A→Z</option>
+        <option value="rating">Rating high→low</option>
+      </select>
+      <label class="toggle-wrap" for="group-toggle">
+        <input type="checkbox" id="group-toggle" class="toggle-input">
+        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+        <span class="toggle-label">Group</span>
+      </label>
+    </div>
+  </div>
+
+  <main class="job-list-wrap">
+    <div id="job-list" class="job-list"></div>
+  </main>
+
+  <script src="dashboard.js"></script>
+</body>
+</html>

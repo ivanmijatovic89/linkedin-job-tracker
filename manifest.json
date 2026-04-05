@@ -3,7 +3,13 @@
   "name": "LinkedIn Jobs Tracker",
   "version": "1.0.0",
   "description": "Track status and rating for LinkedIn job listings.",
-  "permissions": ["storage"],
+  "permissions": ["storage", "tabs"],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_title": "Open Job Tracker Dashboard"
+  },
   "content_scripts": [
     {
       "matches": ["https://www.linkedin.com/jobs/*"],
