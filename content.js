@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const STATUS_OPTIONS = ['None', 'Seen', 'Applied', 'Skipped'];
+  const STATUS_OPTIONS = ['None', 'Seen', 'Applied', 'Skip'];
 
   // ── Utilities ─────────────────────────────────────────────────────────────
 
@@ -29,6 +29,26 @@
     return '';
   }
 
+  function isWorkplaceOnly(text) {
+    const t = normalizeText(text).toLowerCase();
+    return t === 'remote' || t === 'hybrid' || t === 'on-site' || t === 'on site' || t === 'onsite';
+  }
+
+  function extractWorkplaceFromTitle(title) {
+    return extractWorkplaceFromText(title);
+  }
+
+  function extractWorkplaceFromContainer(container) {
+    const pills = [...container.querySelectorAll('button, span, li, div')]
+      .map(el => normalizeText(el.textContent))
+      .filter(Boolean);
+    for (const t of pills) {
+      const wp = extractWorkplaceFromText(t);
+      if (wp) return wp;
+    }
+    return '';
+  }
+
   function stripBullets(text) {
     return text.split('·')[0].trim();
   }
@@ -40,7 +60,7 @@
   }
 
   function buildFingerprintKey(title, company, location, workplace) {
-    const t = normalizeKeyPart(title);
+    const t = normalizeKeyPart(cleanTitleText(title));
     const c = normalizeKeyPart(company);
     const l = normalizeKeyPart(location);
     const w = normalizeKeyPart(workplace);
@@ -105,7 +125,7 @@
     });
   }
 
-  function buildPanel(jobId, { status, rating } = {}, { readOnly = false, fingerprintKey = '', meta = null } = {}) {
+  function buildPanel(jobId, { status, rating, seen_at } = {}, { readOnly = false, fingerprintKey = '', meta = null } = {}) {
     const safeStatus = status || 'None';
     const safeRating = Number.isFinite(rating) ? rating : 0;
     const panel = document.createElement('div');
@@ -139,6 +159,7 @@
     panel.appendChild(ratingSel);
 
     let curRating = safeRating;
+    let seenAt = seen_at || null;
 
     // Stop all pointer/click events from bubbling out of the panel into the card's button handler
     ['mousedown', 'pointerdown', 'click', 'mouseup', 'pointerup', 'dblclick'].forEach(evt =>
@@ -152,19 +173,22 @@
     if (!readOnly) {
       sel.addEventListener('change', () => {
         sel.className = `ljt-select ljt-s-${sel.value.toLowerCase()}`;
-        saveData(jobId, { status: sel.value, rating: curRating }, meta);
+        if (sel.value === 'Seen' && !seenAt) {
+          seenAt = Date.now();
+        }
+        saveData(jobId, { status: sel.value, rating: curRating, seen_at: seenAt }, meta);
       });
     }
 
     if (!readOnly) {
       ratingSel.addEventListener('change', () => {
         curRating = +ratingSel.value;
-        saveData(jobId, { status: sel.value, rating: curRating }, meta);
+        saveData(jobId, { status: sel.value, rating: curRating, seen_at: seenAt }, meta);
       });
     }
 
     // Expose a sync method so the storage listener can update this panel from outside
-    panel._ljtSync = ({ status: s, rating: r }) => {
+    panel._ljtSync = ({ status: s, rating: r, seen_at: sa }) => {
       if (sel.value !== s) {
         sel.value = s;
         sel.className = `ljt-select ljt-s-${s.toLowerCase()}`;
@@ -172,6 +196,9 @@
       if (curRating !== r) {
         curRating = r;
         ratingSel.value = String(curRating);
+      }
+      if (sa && seenAt !== sa) {
+        seenAt = sa;
       }
     };
 
@@ -226,7 +253,11 @@
     injecting.add(card);
 
     const data = await loadData(jobId);
-    if (opts?.meta) {
+    if (opts?.autoSeen && (data?.status === 'None' || !data?.status)) {
+      if (!data.seen_at) data.seen_at = Date.now();
+      data.status = 'Seen';
+      saveData(jobId, data, opts.meta);
+    } else if (opts?.meta) {
       saveData(jobId, data, opts.meta);
     }
 
@@ -309,27 +340,38 @@
     return { company, location, workplace };
   }
 
-  function extractLocationWorkplaceFromTexts(texts, jobTitle, company) {
+  function extractLocationWorkplaceFromTexts(texts, jobTitle, company, container = null) {
     let locationLine = '';
+    let workplace = '';
     for (const t of texts) {
       if (!t) continue;
       if (t === jobTitle || t === company) continue;
       if (isMetaLine(t)) continue;
+      const wp = extractWorkplaceFromText(t);
+      if (wp && !workplace) workplace = wp;
+      if (isWorkplaceOnly(t)) continue;
       if (t.includes('·')) {
         const seg = stripBullets(t);
         if (seg) { locationLine = seg; break; }
       }
-      if (t.includes('(') || t.includes(',') || extractWorkplaceFromText(t)) {
+      if (t.includes(',') || t.includes('Area') || t.includes('United States')) {
+        locationLine = t;
+        break;
+      }
+      if (t.includes('(') && !isWorkplaceOnly(t)) {
         locationLine = t;
         break;
       }
     }
     locationLine = stripBullets(locationLine || '');
-    const { location, workplace } = parseLocationAndWorkplace(locationLine);
-    if (workplace) return { location, workplace };
-    // fallback: look for workplace elsewhere
-    const wp = texts.map(extractWorkplaceFromText).find(Boolean) || '';
-    return { location, workplace: wp };
+    const parsed = parseLocationAndWorkplace(locationLine);
+    const loc = parsed.location;
+    const wpFinal =
+      parsed.workplace ||
+      workplace ||
+      (container ? extractWorkplaceFromContainer(container) : '') ||
+      extractWorkplaceFromTitle(jobTitle);
+    return { location: loc, workplace: wpFinal };
   }
 
 
@@ -438,7 +480,7 @@
       }
 
       const texts = collectTexts(container);
-      const { location, workplace } = extractLocationWorkplaceFromTexts(texts, jobTitle, company);
+      const { location, workplace } = extractLocationWorkplaceFromTexts(texts, jobTitle, company, container);
       const fingerprintKey = buildFingerprintKey(jobTitle, company, location, workplace);
       if (!fingerprintKey) return;
       const meta = buildMeta({ id: numericId, title: jobTitle, company, location, workplace });
@@ -454,7 +496,7 @@
 
       injectedJobIds.clear();
       injectedJobIds.add(numericId);
-      inject(container, fingerprintKey, { readOnly: false, fingerprintKey, meta });
+      inject(container, fingerprintKey, { readOnly: false, fingerprintKey, meta, autoSeen: true });
     });
   }
 
