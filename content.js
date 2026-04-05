@@ -1,7 +1,7 @@
 (() => {
   'use strict';
 
-  const STATUS_OPTIONS = ['None', 'Seen', 'Applied', 'Skip'];
+  // STATUS_OPTIONS are defined in options.js (loaded first via manifest)
 
   // ── Utilities ─────────────────────────────────────────────────────────────
 
@@ -134,13 +134,13 @@
     if (fingerprintKey) panel.setAttribute('data-ljt-fp', fingerprintKey);
 
     const sel = document.createElement('select');
-    sel.className = `ljt-select ljt-s-${safeStatus.toLowerCase()}`;
+    sel.className = `ljt-select ljt-s-${ljtStatusCssKey(safeStatus)}`;
     if (readOnly) sel.disabled = true;
-    STATUS_OPTIONS.forEach(opt => {
+    LJT_STATUS_OPTIONS.forEach(opt => {
       const o = document.createElement('option');
-      o.value = opt;
-      o.textContent = opt;
-      if (opt === safeStatus) o.selected = true;
+      o.value = opt.value;
+      o.textContent = opt.icon ? `${opt.icon} ${opt.label}` : opt.label;
+      if (opt.value === safeStatus) o.selected = true;
       sel.appendChild(o);
     });
 
@@ -172,7 +172,7 @@
 
     if (!readOnly) {
       sel.addEventListener('change', () => {
-        sel.className = `ljt-select ljt-s-${sel.value.toLowerCase()}`;
+        sel.className = `ljt-select ljt-s-${ljtStatusCssKey(sel.value)}`;
         if (sel.value === 'Seen' && !seenAt) {
           seenAt = Date.now();
         }
@@ -191,7 +191,7 @@
     panel._ljtSync = ({ status: s, rating: r, seen_at: sa }) => {
       if (sel.value !== s) {
         sel.value = s;
-        sel.className = `ljt-select ljt-s-${s.toLowerCase()}`;
+        sel.className = `ljt-select ljt-s-${ljtStatusCssKey(s)}`;
       }
       if (curRating !== r) {
         curRating = r;

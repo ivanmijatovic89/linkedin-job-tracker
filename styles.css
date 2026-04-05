@@ -63,10 +63,16 @@
   color: #6b7280;
 }
 
+.ljt-select.ljt-s-to-apply {
+  background-color: #eff6ff;
+  border-color: #93c5fd;
+  color: #1d4ed8;
+}
+
 .ljt-select.ljt-s-seen {
-  background-color: #f1f2f4;
-  border-color: #9ca3af;
-  color: #4b5563;
+  background-color: #fffbeb;
+  border-color: #fcd34d;
+  color: #92400e;
 }
 
 .ljt-select.ljt-s-applied {
@@ -75,7 +81,7 @@
   color: #065f46;
 }
 
-.ljt-select.ljt-s-skipped {
+.ljt-select.ljt-s-skip {
   background-color: #fff1f2;
   border-color: #fca5a5;
   color: #991b1b;
@@ -114,8 +120,14 @@
 
 /* ── Panel color accent based on status (left border) ───────────────────── */
 
+.ljt-panel:has(.ljt-s-to-apply) {
+  border-left: 3px solid #3b82f6;
+  background: #f0f7ff;
+}
+
 .ljt-panel:has(.ljt-s-seen) {
-  border-left: 3px solid #9ca3af;
+  border-left: 3px solid #f59e0b;
+  background: #fffdf0;
 }
 
 .ljt-panel:has(.ljt-s-applied) {
@@ -123,7 +135,7 @@
   background: #f0fdf8;
 }
 
-.ljt-panel:has(.ljt-s-skipped) {
+.ljt-panel:has(.ljt-s-skip) {
   border-left: 3px solid #ef4444;
   background: #fff5f5;
 }

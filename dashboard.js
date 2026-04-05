@@ -110,7 +110,8 @@
   // ── Render job card ───────────────────────────────────────────────────────
 
   function renderCard(job) {
-    const sc = job.status.toLowerCase();
+    const opt = ljtStatusOption(job.status);
+    const sc = opt.cssKey;
     const date = formatDate(job.seen_at);
 
     const metaParts = [job.company, job.location, job.workplace].filter(Boolean);
@@ -120,6 +121,8 @@
     const titleHtml = job.id
       ? `<a class="job-title-link" href="https://www.linkedin.com/jobs/view/${esc(job.id)}/" target="_blank" rel="noopener noreferrer">${titleText}</a>`
       : titleText;
+
+    const pillLabel = opt.icon ? `${opt.icon} ${esc(job.status)}` : esc(job.status);
 
     return `
       <div class="job-card status-${sc}">
@@ -132,7 +135,7 @@
           <div class="job-card-bottom">
             <div class="job-meta">${meta || '<span style="color:var(--text-3)">No details</span>'}</div>
             <div class="job-right">
-              <span class="job-status-pill status-${sc}-pill">${esc(job.status)}</span>
+              <span class="job-status-pill status-${sc}-pill">${pillLabel}</span>
               ${date ? `<span class="job-date">${date}</span>` : ''}
             </div>
           </div>
@@ -151,22 +154,24 @@
   // ── Render grouped list ───────────────────────────────────────────────────
 
   function renderGrouped(jobs) {
-    const order = ['Applied', 'Seen', 'Skip'];
-    const grouped = { Applied: [], Seen: [], Skip: [] };
-
+    // Build groups from options order, skipping None
+    const orderOpts = LJT_STATUS_OPTIONS.filter(o => o.value !== 'None');
+    const grouped = {};
+    for (const opt of orderOpts) grouped[opt.value] = [];
     for (const j of jobs) {
-      if (grouped[j.status]) grouped[j.status].push(j);
+      if (grouped[j.status] !== undefined) grouped[j.status].push(j);
     }
 
     let html = '';
-    for (const status of order) {
-      const group = grouped[status];
+    for (const opt of orderOpts) {
+      const group = grouped[opt.value];
       if (!group.length) continue;
-      const sc = status.toLowerCase();
+      const sc = opt.cssKey;
+      const headerLabel = opt.icon ? `${opt.icon} ${opt.label}` : opt.label;
       html += `
         <div class="group-section">
           <div class="group-header status-${sc}-header">
-            <span class="group-label">${status}</span>
+            <span class="group-label">${headerLabel}</span>
             <span class="group-count">${group.length}</span>
           </div>
           <div class="group-jobs">
@@ -191,10 +196,11 @@
   // ── Update stats ──────────────────────────────────────────────────────────
 
   function updateStats() {
-    document.getElementById('stat-total').textContent   = allJobs.length;
-    document.getElementById('stat-applied').textContent = allJobs.filter(j => j.status === 'Applied').length;
-    document.getElementById('stat-seen').textContent    = allJobs.filter(j => j.status === 'Seen').length;
-    document.getElementById('stat-skip').textContent    = allJobs.filter(j => j.status === 'Skip').length;
+    document.getElementById('stat-total').textContent    = allJobs.length;
+    document.getElementById('stat-to-apply').textContent = allJobs.filter(j => j.status === 'To Apply').length;
+    document.getElementById('stat-applied').textContent  = allJobs.filter(j => j.status === 'Applied').length;
+    document.getElementById('stat-seen').textContent     = allJobs.filter(j => j.status === 'Seen').length;
+    document.getElementById('stat-skip').textContent     = allJobs.filter(j => j.status === 'Skip').length;
   }
 
   // ── Main render ───────────────────────────────────────────────────────────

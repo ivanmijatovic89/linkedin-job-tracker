@@ -11,10 +11,12 @@
   --accent-dim:  rgba(240, 165, 21, 0.15);
   --accent-glow: rgba(240, 165, 21, 0.28);
 
+  --to-apply:     #3b82f6;
+  --to-apply-dim: rgba(59, 130, 246, 0.12);
   --applied:     #34d399;
   --applied-dim: rgba(52, 211, 153, 0.12);
-  --seen:        #818cf8;
-  --seen-dim:    rgba(129, 140, 248, 0.12);
+  --seen:        #f59e0b;
+  --seen-dim:    rgba(245, 158, 11, 0.12);
   --skip:        #fb7185;
   --skip-dim:    rgba(251, 113, 133, 0.12);
 
@@ -221,7 +223,7 @@ body::before {
   margin: 0 auto;
   padding: 20px 28px 0;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   gap: 12px;
 }
 
@@ -251,15 +253,17 @@ body::before {
   height: 2px;
 }
 
-.stat-total::before  { background: linear-gradient(90deg, var(--accent), transparent); }
-.stat-applied::before { background: linear-gradient(90deg, var(--applied), transparent); }
-.stat-seen::before   { background: linear-gradient(90deg, var(--seen), transparent); }
-.stat-skip::before   { background: linear-gradient(90deg, var(--skip), transparent); }
+.stat-total::before    { background: linear-gradient(90deg, var(--accent), transparent); }
+.stat-to-apply::before { background: linear-gradient(90deg, var(--to-apply), transparent); }
+.stat-applied::before  { background: linear-gradient(90deg, var(--applied), transparent); }
+.stat-seen::before     { background: linear-gradient(90deg, var(--seen), transparent); }
+.stat-skip::before     { background: linear-gradient(90deg, var(--skip), transparent); }
 
-.stat-card:hover.stat-total  { border-color: rgba(240,165,21,0.3); }
-.stat-card:hover.stat-applied { border-color: rgba(16,185,129,0.3); }
-.stat-card:hover.stat-seen   { border-color: rgba(99,102,241,0.3); }
-.stat-card:hover.stat-skip   { border-color: rgba(244,63,94,0.3); }
+.stat-card:hover.stat-total    { border-color: rgba(240,165,21,0.3); }
+.stat-card:hover.stat-to-apply { border-color: rgba(59,130,246,0.3); }
+.stat-card:hover.stat-applied  { border-color: rgba(52,211,153,0.3); }
+.stat-card:hover.stat-seen     { border-color: rgba(245,158,11,0.3); }
+.stat-card:hover.stat-skip     { border-color: rgba(251,113,133,0.3); }
 
 .stat-num {
   font-family: var(--font-ui);
@@ -269,10 +273,11 @@ body::before {
   letter-spacing: -0.01em;
 }
 
-.stat-total  .stat-num  { color: #fff; }
-.stat-applied .stat-num { color: var(--applied); }
-.stat-seen   .stat-num  { color: var(--seen); }
-.stat-skip   .stat-num  { color: var(--skip); }
+.stat-total    .stat-num { color: #fff; }
+.stat-to-apply .stat-num { color: var(--to-apply); }
+.stat-applied  .stat-num { color: var(--applied); }
+.stat-seen     .stat-num { color: var(--seen); }
+.stat-skip     .stat-num { color: var(--skip); }
 
 .stat-label {
   font-family: var(--font-ui);
@@ -470,13 +475,15 @@ body::before {
 
 .job-card:hover .job-card-accent { width: 4px; }
 
-.status-applied .job-card-accent { background: var(--applied); }
-.status-seen    .job-card-accent { background: var(--seen); }
-.status-skip    .job-card-accent { background: var(--skip); }
+.status-to-apply .job-card-accent { background: var(--to-apply); }
+.status-applied  .job-card-accent { background: var(--applied); }
+.status-seen     .job-card-accent { background: var(--seen); }
+.status-skip     .job-card-accent { background: var(--skip); }
 
-.status-applied:hover { border-color: rgba(16,185,129,0.25); }
-.status-seen:hover    { border-color: rgba(99,102,241,0.25); }
-.status-skip:hover    { border-color: rgba(244,63,94,0.25); }
+.status-to-apply:hover { border-color: rgba(59,130,246,0.25); }
+.status-applied:hover  { border-color: rgba(52,211,153,0.25); }
+.status-seen:hover     { border-color: rgba(245,158,11,0.25); }
+.status-skip:hover     { border-color: rgba(251,113,133,0.25); }
 
 .job-card-body {
   flex: 1;
@@ -566,9 +573,10 @@ body::before {
   border-radius: 2px;
 }
 
-.status-applied-pill { background: var(--applied-dim); color: var(--applied); }
-.status-seen-pill    { background: var(--seen-dim);    color: var(--seen); }
-.status-skip-pill    { background: var(--skip-dim);    color: var(--skip); }
+.status-to-apply-pill { background: var(--to-apply-dim); color: var(--to-apply); }
+.status-applied-pill  { background: var(--applied-dim); color: var(--applied); }
+.status-seen-pill     { background: var(--seen-dim);    color: var(--seen); }
+.status-skip-pill     { background: var(--skip-dim);    color: var(--skip); }
 
 .job-date {
   font-size: 0.75rem;
@@ -602,9 +610,10 @@ body::before {
   flex-shrink: 0;
 }
 
-.group-header.status-applied-header::before { background: var(--applied); }
-.group-header.status-seen-header::before    { background: var(--seen); }
-.group-header.status-skip-header::before    { background: var(--skip); }
+.group-header.status-to-apply-header::before { background: var(--to-apply); }
+.group-header.status-applied-header::before  { background: var(--applied); }
+.group-header.status-seen-header::before     { background: var(--seen); }
+.group-header.status-skip-header::before     { background: var(--skip); }
 
 .group-label {
   font-family: var(--font-ui);
@@ -614,9 +623,10 @@ body::before {
   text-transform: uppercase;
 }
 
-.group-header.status-applied-header .group-label { color: var(--applied); }
-.group-header.status-seen-header    .group-label { color: var(--seen); }
-.group-header.status-skip-header    .group-label { color: var(--skip); }
+.group-header.status-to-apply-header .group-label { color: var(--to-apply); }
+.group-header.status-applied-header  .group-label { color: var(--applied); }
+.group-header.status-seen-header     .group-label { color: var(--seen); }
+.group-header.status-skip-header     .group-label { color: var(--skip); }
 
 .group-count {
   font-family: var(--font-ui);

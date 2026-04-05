@@ -51,19 +51,24 @@
       <span class="stat-label">Total Tracked</span>
       <div class="stat-bar-fill"></div>
     </div>
+    <div class="stat-card stat-to-apply">
+      <span class="stat-num" id="stat-to-apply">—</span>
+      <span class="stat-label">🎯 To Apply</span>
+      <div class="stat-bar-fill"></div>
+    </div>
     <div class="stat-card stat-applied">
       <span class="stat-num" id="stat-applied">—</span>
-      <span class="stat-label">Applied</span>
+      <span class="stat-label">✅ Applied</span>
       <div class="stat-bar-fill"></div>
     </div>
     <div class="stat-card stat-seen">
       <span class="stat-num" id="stat-seen">—</span>
-      <span class="stat-label">Seen</span>
+      <span class="stat-label">👁 Seen</span>
       <div class="stat-bar-fill"></div>
     </div>
     <div class="stat-card stat-skip">
       <span class="stat-num" id="stat-skip">—</span>
-      <span class="stat-label">Skipped</span>
+      <span class="stat-label">🗑 Skipped</span>
       <div class="stat-bar-fill"></div>
     </div>
   </div>
@@ -79,9 +84,10 @@
     <div class="ctrl-row">
       <select id="filter-status" class="ctrl-select">
         <option value="">All Status</option>
-        <option value="Applied">Applied</option>
-        <option value="Seen">Seen</option>
-        <option value="Skip">Skip</option>
+        <option value="To Apply">🎯 To Apply</option>
+        <option value="Seen">👁 Seen</option>
+        <option value="Applied">✅ Applied</option>
+        <option value="Skip">🗑 Skip</option>
       </select>
       <select id="sort" class="ctrl-select">
         <option value="newest">Newest first</option>
@@ -102,6 +108,7 @@
     <div id="job-list" class="job-list"></div>
   </main>
 
+  <script src="options.js"></script>
   <script src="dashboard.js"></script>
 </body>
 </html>
