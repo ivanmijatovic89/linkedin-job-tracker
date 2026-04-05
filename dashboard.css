@@ -529,7 +529,7 @@ body::before {
   padding-top: 1px;
 }
 
-.star { font-size: 0.8rem; color: var(--text-3); }
+.star { font-size: 1rem; color: var(--text-3); }
 .star--on { color: var(--accent); }
 
 .job-card-bottom {
