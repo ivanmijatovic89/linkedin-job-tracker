@@ -130,8 +130,12 @@
     let curRating = safeRating;
 
     // Stop all pointer/click events from bubbling out of the panel into the card's button handler
-    ['mousedown', 'pointerdown', 'click'].forEach(evt =>
-      panel.addEventListener(evt, e => e.stopPropagation())
+    ['mousedown', 'pointerdown', 'click', 'mouseup', 'pointerup', 'dblclick'].forEach(evt =>
+      panel.addEventListener(evt, e => {
+        e.stopImmediatePropagation();
+        e.stopPropagation();
+        if (evt === 'click') e.preventDefault();
+      }, true)
     );
 
     if (!readOnly) {
@@ -453,6 +457,18 @@
     processRightPanel();
     attachLeftCardClickListener();
   }
+
+  // Block LinkedIn card navigation when interacting with our panel
+  function stopCardNav(e) {
+    const panel = e.target.closest('.ljt-panel');
+    if (!panel) return;
+    e.stopImmediatePropagation();
+    e.stopPropagation();
+    if (e.type === 'click') e.preventDefault();
+  }
+  ['pointerdown', 'pointerup', 'mousedown', 'mouseup', 'click', 'dblclick'].forEach(evt => {
+    window.addEventListener(evt, stopCardNav, true);
+  });
 
   // ── Observer ──────────────────────────────────────────────────────────────
 
