@@ -3,6 +3,9 @@
 
   // STATUS_OPTIONS are defined in options.js (loaded first via manifest)
 
+  // ── Config ────────────────────────────────────────────────────────────────
+  let ljtConfig = { colorLeft: true, colorRight: true };
+
   // ── Utilities ─────────────────────────────────────────────────────────────
 
   function normalizeText(str) {
@@ -107,6 +110,22 @@
   // Sync all panels with the same jobId when storage changes (cross-panel live update)
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'local') return;
+
+    // Handle settings changes — re-apply or remove card background colors
+    if (changes['ljt_settings']) {
+      ljtConfig = { colorLeft: true, colorRight: true, ...(changes['ljt_settings'].newValue || {}) };
+      document.querySelectorAll('[data-ljt-side]').forEach(el => {
+        const side = el.dataset.ljtSide;
+        const status = el.dataset.ljtStatus || 'None';
+        const shouldColor = side === 'left' ? ljtConfig.colorLeft : ljtConfig.colorRight;
+        [...el.classList].filter(c => c.startsWith('ljt-card-')).forEach(c => el.classList.remove(c));
+        if (shouldColor) {
+          const cssKey = ljtStatusCssKey(status);
+          if (cssKey !== 'none') el.classList.add(`ljt-card-${cssKey}`);
+        }
+      });
+    }
+
     Object.entries(changes).forEach(([key, { newValue }]) => {
       if (!newValue) return;
       document.querySelectorAll(`.ljt-panel[data-ljt-id="${CSS.escape(key)}"]`).forEach(panel => {
@@ -248,14 +267,23 @@
     return (el && el !== card) ? el : card;
   }
 
-  function applyCardStatusClass(card, status) {
-    // Walk up to the outermost card container (LinkedIn wraps everything in a [componentkey] div)
-    const target = card.closest('[componentkey]') || card;
+  function applyCardStatusClass(card, status, side) {
+    // For left panel, walk up to [componentkey] root; for right, use card as-is
+    const target = side === 'left' ? (card.closest('[componentkey]') || card) : card;
+    const shouldColor = side === 'right' ? ljtConfig.colorRight : ljtConfig.colorLeft;
+
+    // Store side + status so settings changes can re-apply without re-injection
+    target.dataset.ljtSide = side;
+    target.dataset.ljtStatus = status;
+
     [...target.classList]
       .filter(c => c.startsWith('ljt-card-'))
       .forEach(c => target.classList.remove(c));
-    const cssKey = ljtStatusCssKey(status);
-    if (cssKey !== 'none') target.classList.add(`ljt-card-${cssKey}`);
+
+    if (shouldColor) {
+      const cssKey = ljtStatusCssKey(status);
+      if (cssKey !== 'none') target.classList.add(`ljt-card-${cssKey}`);
+    }
   }
 
   async function appendPanel(card, jobId, opts) {
@@ -279,10 +307,11 @@
     }
 
     // Inject into the inner text column so the panel sits below the date/apply line
-    const onStatusChange = (status) => applyCardStatusClass(card, status);
+    const side = opts.panelSide || 'left';
+    const onStatusChange = (status) => applyCardStatusClass(card, status, side);
     const target = findTextContainer(card);
     target.appendChild(buildPanel(jobId, data, { ...opts, onStatusChange }));
-    applyCardStatusClass(card, data.status || 'None');
+    applyCardStatusClass(card, data.status || 'None', side);
     injecting.delete(card);
     watchCard(card, jobId, opts);
   }
@@ -400,7 +429,7 @@
         watchCard(card, jobId, { readOnly: false, fingerprintKey: jobId });
         return;
       }
-      if (!injecting.has(card)) inject(card, jobId, { readOnly: false, fingerprintKey: jobId });
+      if (!injecting.has(card)) inject(card, jobId, { readOnly: false, fingerprintKey: jobId, panelSide: 'left' });
     });
 
     // Pass 2: discover new cards via dismiss button
@@ -428,7 +457,7 @@
       const meta = buildMeta({ title: jobTitle, company, location, workplace });
       if (compKey) compKeyToJobId.set(compKey, fingerprintKey);
       if (!card.querySelector('.ljt-panel') && !injecting.has(card)) {
-        inject(card, fingerprintKey, { readOnly: false, fingerprintKey, meta });
+        inject(card, fingerprintKey, { readOnly: false, fingerprintKey, meta, panelSide: 'left' });
       }
     });
   }
@@ -454,7 +483,7 @@
 
         const meta = buildMeta({ title: jobTitle, company, location, workplace });
         compKeyToJobId.set(compKey, fingerprintKey);
-        rekeyPanel(card, fingerprintKey, { readOnly: false, fingerprintKey, meta });
+        rekeyPanel(card, fingerprintKey, { readOnly: false, fingerprintKey, meta, panelSide: 'left' });
       }, 0);
     }, true);
   }
@@ -510,7 +539,7 @@
 
       injectedJobIds.clear();
       injectedJobIds.add(numericId);
-      inject(container, fingerprintKey, { readOnly: false, fingerprintKey, meta, autoSeen: true });
+      inject(container, fingerprintKey, { readOnly: false, fingerprintKey, meta, autoSeen: true, panelSide: 'right' });
     });
   }
 
@@ -544,7 +573,11 @@
 
   observer.observe(document.documentElement, { childList: true, subtree: true });
 
-  scanAll();
-  setTimeout(scanAll, 1500);
-  setTimeout(scanAll, 4000);
+  // Load config before first scan so colors are applied correctly on page load
+  chrome.storage.local.get('ljt_settings', res => {
+    if (res.ljt_settings) ljtConfig = { ...ljtConfig, ...res.ljt_settings };
+    scanAll();
+    setTimeout(scanAll, 1500);
+    setTimeout(scanAll, 4000);
+  });
 })();
