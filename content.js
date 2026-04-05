@@ -125,7 +125,7 @@
     });
   }
 
-  function buildPanel(jobId, { status, rating, seen_at } = {}, { readOnly = false, fingerprintKey = '', meta = null } = {}) {
+  function buildPanel(jobId, { status, rating, seen_at } = {}, { readOnly = false, fingerprintKey = '', meta = null, onStatusChange = null } = {}) {
     const safeStatus = status || 'None';
     const safeRating = Number.isFinite(rating) ? rating : 0;
     const panel = document.createElement('div');
@@ -176,6 +176,7 @@
         if (sel.value === 'Seen' && !seenAt) {
           seenAt = Date.now();
         }
+        onStatusChange?.(sel.value);
         saveData(jobId, { status: sel.value, rating: curRating, seen_at: seenAt }, meta);
       });
     }
@@ -192,6 +193,7 @@
       if (sel.value !== s) {
         sel.value = s;
         sel.className = `ljt-select ljt-s-${ljtStatusCssKey(s)}`;
+        onStatusChange?.(s);
       }
       if (curRating !== r) {
         curRating = r;
@@ -246,6 +248,16 @@
     return (el && el !== card) ? el : card;
   }
 
+  function applyCardStatusClass(card, status) {
+    // Walk up to the outermost card container (LinkedIn wraps everything in a [componentkey] div)
+    const target = card.closest('[componentkey]') || card;
+    [...target.classList]
+      .filter(c => c.startsWith('ljt-card-'))
+      .forEach(c => target.classList.remove(c));
+    const cssKey = ljtStatusCssKey(status);
+    if (cssKey !== 'none') target.classList.add(`ljt-card-${cssKey}`);
+  }
+
   async function appendPanel(card, jobId, opts) {
     if (!card.isConnected) return;
     if (card.querySelector('.ljt-panel')) return;
@@ -267,8 +279,10 @@
     }
 
     // Inject into the inner text column so the panel sits below the date/apply line
+    const onStatusChange = (status) => applyCardStatusClass(card, status);
     const target = findTextContainer(card);
-    target.appendChild(buildPanel(jobId, data, opts));
+    target.appendChild(buildPanel(jobId, data, { ...opts, onStatusChange }));
+    applyCardStatusClass(card, data.status || 'None');
     injecting.delete(card);
     watchCard(card, jobId, opts);
   }

@@ -144,3 +144,20 @@
 .ljt-panel {
   border-left-width: 3px;
 }
+
+/* ── Card background tint based on status ────────────────────────────────── */
+
+.ljt-card-to-apply { background-color: rgba(59,  130, 246, 0.14) !important; }
+.ljt-card-seen     { background-color: rgba(245, 158,  11, 0.14) !important; }
+.ljt-card-applied  { background-color: rgba(52,  211, 153, 0.14) !important; }
+.ljt-card-skip     { background-color: rgba(251, 113, 133, 0.14) !important; }
+
+/* Panel inside a colored card — blend in, no double background */
+.ljt-card-to-apply .ljt-panel,
+.ljt-card-seen     .ljt-panel,
+.ljt-card-applied  .ljt-panel,
+.ljt-card-skip     .ljt-panel {
+  background: rgba(255, 255, 255, 0.4);
+  border-color: rgba(255, 255, 255, 0.55);
+  border-left-width: 1px;
+}
