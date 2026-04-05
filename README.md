@@ -1,11 +1,11 @@
 # LinkedIn Jobs Tracker
 
-A Chrome Extension (Manifest V3) that adds status tracking and star ratings to LinkedIn job cards.
+A Chrome Extension (Manifest V3) that adds status tracking and rating to LinkedIn job cards.
 
 ## Features
 
 - **Status tracking**: Mark each job as `None`, `Seen`, `Applied`, or `Skipped`
-- **Star ratings**: Rate jobs from 1–5 stars
+- **Rating**: Rate jobs from 0–5 stars
 - **Color coding**: Green for Applied, Red for Skipped, Gray for Seen
 - **Persistent storage**: All data saved locally via `chrome.storage.local`
 - **Dynamic injection**: Works with LinkedIn's infinite scroll via MutationObserver
@@ -35,7 +35,7 @@ Each job card gets a small inline panel at the bottom:
 | Element | Action |
 |---|---|
 | Status dropdown | Select `None` / `Seen` / `Applied` / `Skipped` |
-| Stars (★★★★★) | Click to rate 1–5; click the same star again to clear |
+| Rating (★) | Select 0–5 |
 
 Changes save instantly. Data persists across page reloads and browser restarts.
 

@@ -6,7 +6,7 @@ This document explains how this Chrome extension works, why certain architectura
 
 ## What the extension does
 
-Injects a small panel (status dropdown + star rating) into every job card on `linkedin.com/jobs`. Data is persisted in `chrome.storage.local`.
+Injects a small panel (status dropdown + rating select) into every job card on `linkedin.com/jobs`. Data is persisted in `chrome.storage.local`.
 
 ---
 
@@ -64,7 +64,7 @@ When the user clicks a left-column card, LinkedIn **replaces the DOM element** w
 
 ## Live sync between left and right panels
 
-When the user changes status/stars on one panel, the other panel must update immediately.
+When the user changes status/rating on one panel, the other panel must update immediately.
 
 **Fix:** `chrome.storage.onChanged` listener finds all `.ljt-panel[data-ljt-id="key"]` elements and calls `panel._ljtSync({ status, rating })` on each. The `_ljtSync` method is attached to the panel DOM node inside `buildPanel` and has closure access to `curRating` and `sel`.
 
