@@ -5,7 +5,7 @@ A Chrome Extension (Manifest V3) that adds status tracking and rating to LinkedI
 ## Features
 
 - **Status tracking**: Mark each job as `None`, `Seen`, `Applied`, or `Skipped`
-- **Rating**: Rate jobs from 0–5 stars
+- **Rating**: Rate jobs from 0–5 ⭐
 - **Color coding**: Green for Applied, Red for Skipped, Gray for Seen
 - **Persistent storage**: All data saved locally via `chrome.storage.local`
 - **Dynamic injection**: Works with LinkedIn's infinite scroll via MutationObserver
@@ -35,7 +35,7 @@ Each job card gets a small inline panel at the bottom:
 | Element | Action |
 |---|---|
 | Status dropdown | Select `None` / `Seen` / `Applied` / `Skipped` |
-| Rating (★) | Select 0–5 |
+| Rating (⭐) | Select 0–5 |
 
 Changes save instantly. Data persists across page reloads and browser restarts.
 
