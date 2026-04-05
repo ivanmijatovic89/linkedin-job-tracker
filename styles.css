@@ -43,6 +43,11 @@
   white-space: nowrap;
 }
 
+.ljt-rating {
+  padding-right: 18px;
+  min-width: 46px;
+}
+
 .ljt-select:hover {
   border-color: #9ca3af;
 }

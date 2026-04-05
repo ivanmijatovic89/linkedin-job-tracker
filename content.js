@@ -113,19 +113,19 @@
       sel.appendChild(o);
     });
 
-    const stars = document.createElement('div');
-    stars.className = 'ljt-stars';
-    for (let i = 1; i <= 5; i++) {
-      const s = document.createElement('span');
-      s.className = 'ljt-star';
-      s.dataset.v = i;
-      s.textContent = '★';
-      stars.appendChild(s);
+    const ratingSel = document.createElement('select');
+    ratingSel.className = 'ljt-select ljt-rating';
+    if (readOnly) ratingSel.disabled = true;
+    for (let i = 0; i <= 5; i++) {
+      const o = document.createElement('option');
+      o.value = String(i);
+      o.textContent = i === 0 ? '★' : `${i}★`;
+      if (i === safeRating) o.selected = true;
+      ratingSel.appendChild(o);
     }
-    renderStars(stars, safeRating);
 
     panel.appendChild(sel);
-    panel.appendChild(stars);
+    panel.appendChild(ratingSel);
 
     let curRating = safeRating;
 
@@ -146,17 +146,8 @@
     }
 
     if (!readOnly) {
-      stars.addEventListener('mouseover', e => {
-        const s = e.target.closest('.ljt-star');
-        if (s) renderStars(stars, +s.dataset.v, true);
-      });
-      stars.addEventListener('mouseleave', () => renderStars(stars, curRating));
-      stars.addEventListener('click', e => {
-        const s = e.target.closest('.ljt-star');
-        if (!s) return;
-        const v = +s.dataset.v;
-        curRating = curRating === v ? 0 : v;
-        renderStars(stars, curRating);
+      ratingSel.addEventListener('change', () => {
+        curRating = +ratingSel.value;
         saveData(jobId, { status: sel.value, rating: curRating });
       });
     }
@@ -169,7 +160,7 @@
       }
       if (curRating !== r) {
         curRating = r;
-        renderStars(stars, curRating);
+        ratingSel.value = String(curRating);
       }
     };
 
