@@ -1,6 +1,6 @@
 # LinkedIn Jobs Tracker
 
-A Chrome Extension (Manifest V3) that adds status tracking and rating directly to LinkedIn job cards — so you can manage your job search without leaving the page.
+A Chrome Extension (Manifest V3) that adds status tracking and rating directly to LinkedIn job cards — so you can manage your entire job search without leaving the page.
 
 ![LinkedIn Search](screenshots/linkedin-search.png)
 
