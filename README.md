@@ -1,80 +1,86 @@
 # LinkedIn Jobs Tracker
 
-A Chrome Extension (Manifest V3) that adds status tracking, rating, and a dashboard to LinkedIn job cards.
+A Chrome Extension (Manifest V3) that adds status tracking and rating directly to LinkedIn job cards — so you can manage your job search without leaving the page.
+
+![LinkedIn Search](screenshots/linkedin-search.png)
 
 ## Features
 
-- **Status tracking**: Mark each job as `None`, `To Apply`, `Seen`, `Applied`, or `Skip`
-- **Rating**: Rate jobs from 0–5 ⭐
-- **Color coding**: Blue for To Apply, Yellow for Seen, Green for Applied, Red for Skip
-- **Dashboard**: Dedicated page with filtering, sorting, grouping, and stats
-- **Background coloring**: Optional status-based background tint on left/right LinkedIn panels (configurable)
-- **Persistent storage**: All data saved locally via `chrome.storage.local`
-- **Dynamic injection**: Works with LinkedIn's infinite scroll via MutationObserver
-- **Live sync**: Status changes sync instantly across all open panels
+- **Inline status panel** on every job card — set status and rating without opening a new tab
+- **5 statuses**: None, 🎯 To Apply, 👁 Seen, ✅ Applied, 🗑 Skip — each with a distinct color
+- **Star rating** — rate jobs 0–5 from within the card
+- **Dashboard** — dedicated page with search, filtering, sorting, grouping, and stats
+- **Optional background tinting** — color-code job cards and detail panels by status (off by default, toggle in Settings)
+- **Live sync** — status changes reflect instantly across all open panels
+- **Persistent storage** — all data saved locally via `chrome.storage.local`, no account needed
+
+---
+
+## Installation
+
+1. Clone or download this repo
+2. Open Chrome → `chrome://extensions`
+3. Enable **Developer mode** (top-right toggle)
+4. Click **Load unpacked** and select this folder
+5. Go to [linkedin.com/jobs](https://www.linkedin.com/jobs/) — panels appear automatically
+
+---
+
+## How It Works
+
+### On LinkedIn
+
+Each job card gets a small inline panel with a **status dropdown** and **star rating**:
+
+| Status | Icon | Meaning |
+|---|---|---|
+| None | — | Not yet reviewed |
+| To Apply | 🎯 | Flagged to apply later |
+| Seen | 👁 | Reviewed, no decision yet |
+| Applied | ✅ | Application submitted |
+| Skip | 🗑 | Not interested |
+
+Changes save instantly. The right-side job detail panel also gets the panel injected automatically and marks the job as **Seen** when you open it.
+
+### Dashboard
+
+Click the extension icon to open the dashboard:
+
+![Dashboard](screenshots/dashboard.png)
+
+- **Stats bar** — live counts per status
+- **Search** — filter by title, company, location, or workplace
+- **Filter by status** — show only jobs with a specific status
+- **Sort** — newest, oldest, title, company, or rating
+- **Group** — toggle grouping by status
+- **Settings** (⚙ gear icon) — configure background color tinting:
+  - *Color left panel cards* — background tint on job cards in the search list
+  - *Color right panel* — background tint on the job detail view
+
+---
 
 ## File Structure
 
 ```
 linkedin-chrome-addon/
-├── manifest.json
-├── options.js        # Shared status config (values, icons, colors, CSS keys)
-├── content.js        # Injected into LinkedIn jobs pages
-├── styles.css        # Styles for injected panels
-├── background.js     # Service worker (opens dashboard on extension click)
-├── dashboard.html    # Standalone dashboard page
-├── dashboard.js      # Dashboard logic
-├── dashboard.css     # Dashboard styles
-└── README.md
+├── manifest.json         # Extension config (MV3)
+├── options.js            # Shared status config — values, icons, colors, CSS keys
+├── content.js            # Injected into LinkedIn jobs pages
+├── styles.css            # Styles for injected panels
+├── background.js         # Service worker — opens dashboard on extension click
+├── dashboard.html        # Dashboard page
+├── dashboard.js          # Dashboard logic
+├── dashboard.css         # Dashboard styles
+└── screenshots/
+    ├── linkedin-search.png
+    └── dashboard.png
 ```
 
-## Installation
+---
 
-1. Open Chrome and navigate to `chrome://extensions`
-2. Enable **Developer mode** (toggle in the top-right corner)
-3. Click **Load unpacked**
-4. Select this folder (`linkedin-chrome-addon/`)
-5. Navigate to [linkedin.com/jobs](https://www.linkedin.com/jobs/) — panels appear automatically on each job card
+## Storage Schema
 
-## Usage
-
-### On LinkedIn
-
-Each job card gets a small inline panel:
-
-| Element | Action |
-|---|---|
-| Status dropdown | Select `None` / `To Apply` / `Seen` / `Applied` / `Skip` |
-| Rating (⭐) | Select 0–5 |
-
-Changes save instantly and sync across panels in real time.
-
-### Dashboard
-
-Click the extension icon to open the dashboard. Features:
-
-- **Stats bar** — counts per status (Total, To Apply, Applied, Seen, Skipped)
-- **Search** — filter by title, company, location, or workplace
-- **Filter by status** — show only a specific status
-- **Sort** — by date, title, company, or rating
-- **Group** — toggle grouping by status
-- **Settings** — gear icon in the header, configure:
-  - `Color left panel cards` — background tint on job cards in the search list
-  - `Color right panel` — background tint on the job detail view
-
-## Status Options
-
-| Status | Icon | Color |
-|---|---|---|
-| None | — | none |
-| To Apply | 🎯 | Blue |
-| Seen | 👁 | Yellow |
-| Applied | ✅ | Green |
-| Skip | 🗑 | Red |
-
-## Storage
-
-Job data is stored in `chrome.storage.local`:
+All data is stored in `chrome.storage.local`. Job entries use a fingerprint key:
 
 ```json
 {
@@ -95,18 +101,23 @@ Job data is stored in `chrome.storage.local`:
 }
 ```
 
-The key is a fingerprint: `title || company || location || workplace`. Settings are stored under `ljt_settings` and are excluded from the "Clear All" operation.
+Settings are stored under `ljt_settings` and are excluded from the **Clear All** operation.
 
-## Updating / Reloading
-
-After editing any file, go to `chrome://extensions`, click the **reload** icon on the extension card, then refresh the LinkedIn tab.
+---
 
 ## Clearing Data
 
-To reset all tracked jobs from the DevTools console on any LinkedIn page:
+Use the **Clear All** button in the dashboard, or run this in the Chrome DevTools console on any LinkedIn page:
 
 ```js
 window.postMessage({ type: 'LJT_CLEAR' }, '*')
 ```
 
-Or use the **Clear All** button in the dashboard (preserves settings).
+---
+
+## Reloading After Edits
+
+After editing any file:
+1. Go to `chrome://extensions`
+2. Click the **reload** icon on the extension card
+3. Refresh the LinkedIn tab
