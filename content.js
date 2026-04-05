@@ -5,16 +5,47 @@
 
   // ── Utilities ─────────────────────────────────────────────────────────────
 
-  function simpleHash(str) {
-    let h = 0;
-    for (let i = 0; i < str.length; i++) {
-      h = Math.imul(31, h) + str.charCodeAt(i) | 0;
-    }
-    return Math.abs(h).toString(36);
-  }
-
   function normalizeText(str) {
     return (str || '').trim().replace(/\s+/g, ' ');
+  }
+
+  function normalizeKeyPart(str) {
+    return normalizeText(str).toLowerCase();
+  }
+
+  function cleanTitleText(text) {
+    let t = normalizeText(text);
+    t = t.replace(/verified job/ig, '');
+    t = t.replace(/\(\s*\)/g, '');
+    return normalizeText(t);
+  }
+
+  function extractWorkplaceFromText(text) {
+    if (!text) return '';
+    const t = text.toLowerCase();
+    if (t.includes('remote')) return 'remote';
+    if (t.includes('hybrid')) return 'hybrid';
+    if (t.includes('on-site') || t.includes('on site') || t.includes('onsite')) return 'on-site';
+    return '';
+  }
+
+  function stripBullets(text) {
+    return text.split('·')[0].trim();
+  }
+
+  function parseLocationAndWorkplace(text) {
+    const workplace = extractWorkplaceFromText(text);
+    const location = text.replace(/\([^)]*\)/g, '').trim();
+    return { location, workplace };
+  }
+
+  function buildFingerprintKey(title, company, location, workplace) {
+    const t = normalizeKeyPart(title);
+    const c = normalizeKeyPart(company);
+    const l = normalizeKeyPart(location);
+    const w = normalizeKeyPart(workplace);
+    if (!t || !c) return '';
+    return `ljt_idx__${t}||${c}||${l}||${w}`;
   }
 
   // ── Storage ───────────────────────────────────────────────────────────────
@@ -63,18 +94,22 @@
     });
   }
 
-  function buildPanel(jobId, { status, rating }) {
+  function buildPanel(jobId, { status, rating } = {}, { readOnly = false, fingerprintKey = '' } = {}) {
+    const safeStatus = status || 'None';
+    const safeRating = Number.isFinite(rating) ? rating : 0;
     const panel = document.createElement('div');
     panel.className = 'ljt-panel';
     panel.setAttribute('data-ljt-id', jobId);
+    if (fingerprintKey) panel.setAttribute('data-ljt-fp', fingerprintKey);
 
     const sel = document.createElement('select');
-    sel.className = `ljt-select ljt-s-${status.toLowerCase()}`;
+    sel.className = `ljt-select ljt-s-${safeStatus.toLowerCase()}`;
+    if (readOnly) sel.disabled = true;
     STATUS_OPTIONS.forEach(opt => {
       const o = document.createElement('option');
       o.value = opt;
       o.textContent = opt;
-      if (opt === status) o.selected = true;
+      if (opt === safeStatus) o.selected = true;
       sel.appendChild(o);
     });
 
@@ -87,36 +122,40 @@
       s.textContent = '★';
       stars.appendChild(s);
     }
-    renderStars(stars, rating);
+    renderStars(stars, safeRating);
 
     panel.appendChild(sel);
     panel.appendChild(stars);
 
-    let curRating = rating;
+    let curRating = safeRating;
 
     // Stop all pointer/click events from bubbling out of the panel into the card's button handler
     ['mousedown', 'pointerdown', 'click'].forEach(evt =>
       panel.addEventListener(evt, e => e.stopPropagation())
     );
 
-    sel.addEventListener('change', () => {
-      sel.className = `ljt-select ljt-s-${sel.value.toLowerCase()}`;
-      saveData(jobId, { status: sel.value, rating: curRating });
-    });
+    if (!readOnly) {
+      sel.addEventListener('change', () => {
+        sel.className = `ljt-select ljt-s-${sel.value.toLowerCase()}`;
+        saveData(jobId, { status: sel.value, rating: curRating });
+      });
+    }
 
-    stars.addEventListener('mouseover', e => {
-      const s = e.target.closest('.ljt-star');
-      if (s) renderStars(stars, +s.dataset.v, true);
-    });
-    stars.addEventListener('mouseleave', () => renderStars(stars, curRating));
-    stars.addEventListener('click', e => {
-      const s = e.target.closest('.ljt-star');
-      if (!s) return;
-      const v = +s.dataset.v;
-      curRating = curRating === v ? 0 : v;
-      renderStars(stars, curRating);
-      saveData(jobId, { status: sel.value, rating: curRating });
-    });
+    if (!readOnly) {
+      stars.addEventListener('mouseover', e => {
+        const s = e.target.closest('.ljt-star');
+        if (s) renderStars(stars, +s.dataset.v, true);
+      });
+      stars.addEventListener('mouseleave', () => renderStars(stars, curRating));
+      stars.addEventListener('click', e => {
+        const s = e.target.closest('.ljt-star');
+        if (!s) return;
+        const v = +s.dataset.v;
+        curRating = curRating === v ? 0 : v;
+        renderStars(stars, curRating);
+        saveData(jobId, { status: sel.value, rating: curRating });
+      });
+    }
 
     // Expose a sync method so the storage listener can update this panel from outside
     panel._ljtSync = ({ status: s, rating: r }) => {
@@ -144,7 +183,7 @@
   // Attaches a MutationObserver directly to a card element.
   // If LinkedIn removes our panel (during re-renders), re-inject after a delay.
 
-  function watchCard(card, jobId) {
+  function watchCard(card, jobId, opts) {
     if (watchedCards.has(card)) return;
     watchedCards.add(card);
 
@@ -155,7 +194,7 @@
       }
       if (!card.querySelector('.ljt-panel') && !injecting.has(card)) {
         // Panel was removed — wait for LinkedIn to finish its render, then re-inject
-        setTimeout(() => appendPanel(card, jobId), 150);
+        setTimeout(() => appendPanel(card, jobId, opts), 150);
       }
     });
     obs.observe(card, { childList: true });
@@ -174,7 +213,7 @@
     return (el && el !== card) ? el : card;
   }
 
-  async function appendPanel(card, jobId) {
+  async function appendPanel(card, jobId, opts) {
     if (!card.isConnected) return;
     if (card.querySelector('.ljt-panel')) return;
     if (injecting.has(card)) return;
@@ -189,106 +228,99 @@
 
     // Inject into the inner text column so the panel sits below the date/apply line
     const target = findTextContainer(card);
-    target.appendChild(buildPanel(jobId, data));
+    target.appendChild(buildPanel(jobId, data, opts));
     injecting.delete(card);
-    watchCard(card, jobId);
+    watchCard(card, jobId, opts);
   }
 
   // First-time injection for a card
-  async function inject(card, jobId) {
+  async function inject(card, jobId, opts) {
     if (card.querySelector('.ljt-panel')) {
-      watchCard(card, jobId);
+      watchCard(card, jobId, opts);
       return;
     }
     if (injecting.has(card)) return;
 
-    await appendPanel(card, jobId);
-    watchCard(card, jobId);
+    await appendPanel(card, jobId, opts);
+    watchCard(card, jobId, opts);
   }
 
   // ── Shared key computation ────────────────────────────────────────────────
 
-  function makeJobId({ numericId, title, company }) {
-    if (numericId) return `ljt_${numericId}`;
-    return `ljt_h_${simpleHash(title + '||' + company)}`;
-  }
-
-  function isNumericJobId(jobId) {
-    return /^ljt_\d+$/.test(jobId);
-  }
-
-  function getCurrentJobIdFromUrl() {
-    const m = location.search.match(/[?&]currentJobId=(\d+)/);
-    return m ? m[1] : '';
-  }
-
-  function rekeyPanel(card, newJobId) {
+  function rekeyPanel(card, newJobId, opts) {
     const panel = card.querySelector('.ljt-panel');
     if (panel && panel.getAttribute('data-ljt-id') !== newJobId) {
       panel.remove();
     }
     if (!card.querySelector('.ljt-panel') && !injecting.has(card)) {
-      inject(card, newJobId);
+      inject(card, newJobId, opts);
     }
   }
 
-  function extractNumericIdFromNode(start) {
-    let el = start;
-    for (let i = 0; i < 12 && el && el !== document.body; i++) {
-      const occl = el.getAttribute?.('data-occludable-job-id');
-      if (occl) return occl;
-      const dataJobId = el.getAttribute?.('data-job-id');
-      if (dataJobId) return dataJobId;
-      const urn = el.getAttribute?.('data-entity-urn') || '';
-      const mUrn = urn.match(/jobPosting:(\d+)/);
-      if (mUrn) return mUrn[1];
-      el = el.parentElement;
-    }
-    return '';
+  function collectTexts(root) {
+    return [...root.querySelectorAll('p, span, li')]
+      .map(el => normalizeText(el.textContent))
+      .filter(Boolean);
   }
 
-  function extractNumericIdFromCard(card, hintEl) {
-    const fromHint = hintEl ? extractNumericIdFromNode(hintEl) : '';
-    if (fromHint) return fromHint;
-    const direct =
-      card.getAttribute('data-occludable-job-id') ||
-      card.querySelector('[data-occludable-job-id]')?.getAttribute('data-occludable-job-id') ||
-      '';
-    if (direct) return direct;
-    const urnEl = card.querySelector('[data-entity-urn*="jobPosting:"]');
-    const urn = urnEl?.getAttribute('data-entity-urn') || '';
-    const mUrn = urn.match(/jobPosting:(\d+)/);
-    if (mUrn) return mUrn[1];
-    const dataJobId =
-      card.getAttribute('data-job-id') ||
-      card.querySelector('[data-job-id]')?.getAttribute('data-job-id') ||
-      '';
-    if (dataJobId) return dataJobId;
-    const link = card.querySelector('a[href*="/jobs/view/"]');
-    if (!link) return '';
-    const m = (link.getAttribute('href') || '').match(/\/jobs\/view\/(\d+)/);
-    return m ? m[1] : '';
+  function isMetaLine(text) {
+    return /(Viewed|Posted|Reposted|Applicants?|Easy Apply|Promoted|Actively reviewing)/i.test(text);
   }
 
-  function extractNumericIdByTitle(jobTitle, hintEl) {
-    if (!jobTitle) return '';
-    const targetTitle = normalizeText(jobTitle);
-    const hintRect = hintEl?.getBoundingClientRect?.();
-    let best = null;
-    document.querySelectorAll('a[href*="/jobs/view/"]').forEach(a => {
-      const t = normalizeText(a.textContent);
-      if (!t || t !== targetTitle) return;
-      const rect = a.getBoundingClientRect();
-      const dx = hintRect ? Math.abs(rect.left - hintRect.left) : 0;
-      const dy = hintRect ? Math.abs(rect.top - hintRect.top) : 0;
-      const score = dx + dy;
-      if (!best || score < best.score) {
-        best = { score, href: a.getAttribute('href') || '' };
+  function extractLeftFields(card, jobTitle) {
+    const ps = [...card.querySelectorAll('p')]
+      .map(p => normalizeText(p.textContent))
+      .filter(Boolean);
+
+    const normJob = cleanTitleText(jobTitle).toLowerCase();
+    let titleIdx = ps.findIndex(t => cleanTitleText(t).toLowerCase().includes(normJob));
+    if (titleIdx < 0) titleIdx = 0;
+
+    let company = '';
+    let locationLine = '';
+    for (let i = titleIdx + 1; i < ps.length; i++) {
+      const t = ps[i];
+      if (!t) continue;
+      if (cleanTitleText(t).toLowerCase().includes(normJob)) continue;
+      if (isMetaLine(t)) continue;
+      company = t;
+      // next meaningful line after company is usually location
+      for (let j = i + 1; j < ps.length; j++) {
+        const t2 = ps[j];
+        if (!t2) continue;
+        if (isMetaLine(t2)) continue;
+        locationLine = t2;
+        break;
       }
-    });
-    if (!best || !best.href) return '';
-    const m = best.href.match(/\/jobs\/view\/(\d+)/);
-    return m ? m[1] : '';
+      break;
+    }
+
+    locationLine = stripBullets(locationLine);
+    const { location, workplace } = parseLocationAndWorkplace(locationLine);
+    return { company, location, workplace };
+  }
+
+  function extractLocationWorkplaceFromTexts(texts, jobTitle, company) {
+    let locationLine = '';
+    for (const t of texts) {
+      if (!t) continue;
+      if (t === jobTitle || t === company) continue;
+      if (isMetaLine(t)) continue;
+      if (t.includes('·')) {
+        const seg = stripBullets(t);
+        if (seg) { locationLine = seg; break; }
+      }
+      if (t.includes('(') || t.includes(',') || extractWorkplaceFromText(t)) {
+        locationLine = t;
+        break;
+      }
+    }
+    locationLine = stripBullets(locationLine || '');
+    const { location, workplace } = parseLocationAndWorkplace(locationLine);
+    if (workplace) return { location, workplace };
+    // fallback: look for workplace elsewhere
+    const wp = texts.map(extractWorkplaceFromText).find(Boolean) || '';
+    return { location, workplace: wp };
   }
 
 
@@ -300,10 +332,10 @@
       const card = document.querySelector(`[componentkey="${compKey}"]`);
       if (!card) return; // scrolled away
       if (card.querySelector('.ljt-panel')) {
-        watchCard(card, jobId);
+        watchCard(card, jobId, { readOnly: true });
         return;
       }
-      if (!injecting.has(card)) inject(card, jobId);
+      if (!injecting.has(card)) inject(card, jobId, { readOnly: true });
     });
 
     // Pass 2: discover new cards via dismiss button
@@ -324,34 +356,13 @@
       const jobTitle = normalizeText(label.replace(/^Dismiss /, '').replace(/ job$/, ''));
       if (!jobTitle) return;
 
-      // Prefer LinkedIn's numeric job id if present on the card tree
-      let numericId = extractNumericIdFromCard(card, btn);
-      if (!numericId) {
-        numericId = extractNumericIdByTitle(jobTitle, btn);
-      }
+      const { company, location, workplace } = extractLeftFields(card, jobTitle);
+      const fingerprintKey = buildFingerprintKey(jobTitle, company, location, workplace);
+      if (!fingerprintKey) return;
 
-      const company = [...card.querySelectorAll('p')]
-        .map(p => normalizeText(p.textContent))
-        .find(t =>
-          t &&
-          t !== jobTitle &&
-          t.length < 80 &&
-          !t.match(/\d+ (hour|day|week|month)/) &&
-          !t.includes('applicant') &&
-          !t.includes('·') &&
-          !t.includes('Posted')
-        ) || '';
-
-      const jobId = makeJobId({ numericId, title: jobTitle, company });
-      if (compKey) {
-        const prev = compKeyToJobId.get(compKey);
-        compKeyToJobId.set(compKey, jobId);
-        if (prev && prev !== jobId && !isNumericJobId(prev) && isNumericJobId(jobId)) {
-          chrome.storage.local.remove(prev);
-        }
-      }
+      if (compKey) compKeyToJobId.set(compKey, fingerprintKey);
       if (!card.querySelector('.ljt-panel') && !injecting.has(card)) {
-        inject(card, jobId);
+        inject(card, fingerprintKey, { readOnly: true, fingerprintKey });
       }
     });
   }
@@ -368,15 +379,15 @@
       const compKey = card.getAttribute('componentkey') || '';
       if (!compKey) return;
       setTimeout(() => {
-        const numericId = getCurrentJobIdFromUrl();
-        if (!numericId) return;
-        const newJobId = `ljt_${numericId}`;
-        const prev = compKeyToJobId.get(compKey);
-        compKeyToJobId.set(compKey, newJobId);
-        if (prev && prev !== newJobId && !isNumericJobId(prev)) {
-          chrome.storage.local.remove(prev);
-        }
-        rekeyPanel(card, newJobId);
+        const btn = card.querySelector('button[aria-label^="Dismiss "]');
+        const label = btn?.getAttribute('aria-label') || '';
+        const jobTitle = normalizeText(label.replace(/^Dismiss /, '').replace(/ job$/, ''));
+        const { company, location, workplace } = extractLeftFields(card, jobTitle);
+        const fingerprintKey = buildFingerprintKey(jobTitle, company, location, workplace);
+        if (!fingerprintKey) return;
+
+        compKeyToJobId.set(compKey, fingerprintKey);
+        rekeyPanel(card, fingerprintKey, { readOnly: true, fingerprintKey });
       }, 0);
     }, true);
   }
@@ -415,7 +426,10 @@
         companySearch = companySearch.parentElement;
       }
 
-      const jobId = makeJobId({ numericId, title: jobTitle, company });
+      const texts = collectTexts(container);
+      const { location, workplace } = extractLocationWorkplaceFromTexts(texts, jobTitle, company);
+      const fingerprintKey = buildFingerprintKey(jobTitle, company, location, workplace);
+      if (!fingerprintKey) return;
 
       if (injectedJobIds.has(numericId) && !container.querySelector('.ljt-panel')) {
         injectedJobIds.delete(numericId);
@@ -428,7 +442,7 @@
 
       injectedJobIds.clear();
       injectedJobIds.add(numericId);
-      inject(container, jobId);
+      inject(container, fingerprintKey, { readOnly: false, fingerprintKey });
     });
   }
 
