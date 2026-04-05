@@ -40,7 +40,9 @@ Each job card gets a small inline panel with a **status dropdown** and **star ra
 | Applied | ✅ | Application submitted |
 | Skip | 🗑 | Not interested |
 
-Changes save instantly. The right-side job detail panel also gets the panel injected automatically and marks the job as **Seen** when you open it.
+Changes save instantly.
+
+> **Auto-Seen:** When you click a job and the right-side detail panel loads, if the job has no status (or `None`), it is automatically marked as **👁 Seen** and saved. Jobs that already have a status are never overwritten by this.
 
 ### Dashboard
 
