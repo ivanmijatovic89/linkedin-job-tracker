@@ -39,6 +39,7 @@
             status:    val.status,
             rating:    typeof val.rating === 'number' ? val.rating : 0,
             seen_at:   val.seen_at || 0,
+            id:        val.id || '',
             title:     val.title    || fb.title    || '',
             company:   val.company  || fb.company  || '',
             location:  val.location || fb.location || '',
@@ -115,9 +116,10 @@
     const metaParts = [job.company, job.location, job.workplace].filter(Boolean);
     const meta = esc(metaParts.join(' · '));
 
-    const titleHtml = job.title
-      ? esc(job.title)
-      : '<span class="no-title">Unknown Position</span>';
+    const titleText = job.title ? esc(job.title) : '<span class="no-title">Unknown Position</span>';
+    const titleHtml = job.id
+      ? `<a class="job-title-link" href="https://www.linkedin.com/jobs/view/${esc(job.id)}/" target="_blank" rel="noopener noreferrer">${titleText}</a>`
+      : titleText;
 
     return `
       <div class="job-card status-${sc}">
