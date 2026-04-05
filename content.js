@@ -119,7 +119,7 @@
     for (let i = 0; i <= 5; i++) {
       const o = document.createElement('option');
       o.value = String(i);
-      o.textContent = i === 0 ? '★' : `${i}★`;
+      o.textContent = i === 0 ? '⭐' : `${i}⭐`;
       if (i === safeRating) o.selected = true;
       ratingSel.appendChild(o);
     }
