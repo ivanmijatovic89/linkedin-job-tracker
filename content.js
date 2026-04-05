@@ -50,8 +50,6 @@
 
   // ── Storage ───────────────────────────────────────────────────────────────
 
-  const RESET_ONCE_KEY = 'ljt__reset_2026_04_05';
-
   function loadData(key) {
     return new Promise(resolve =>
       chrome.storage.local.get(key, res => resolve(res[key] ?? { status: 'None', rating: 0 }))
@@ -62,16 +60,6 @@
     console.log('[LJT] save', key, value);
     chrome.storage.local.set({ [key]: value });
   }
-
-  // One-time hard reset of all stored job data (all ljt_* keys).
-  chrome.storage.local.get(RESET_ONCE_KEY, res => {
-    if (res[RESET_ONCE_KEY]) return;
-    chrome.storage.local.get(null, all => {
-      const toRemove = Object.keys(all).filter(k => k.startsWith('ljt_'));
-      if (toRemove.length) chrome.storage.local.remove(toRemove);
-      chrome.storage.local.set({ [RESET_ONCE_KEY]: true });
-    });
-  });
 
   // Allow manual clear from page console:
   // window.postMessage({ type: 'LJT_CLEAR' }, '*')
@@ -344,10 +332,10 @@
       const card = document.querySelector(`[componentkey="${compKey}"]`);
       if (!card) return; // scrolled away
       if (card.querySelector('.ljt-panel')) {
-        watchCard(card, jobId, { readOnly: true });
+        watchCard(card, jobId, { readOnly: false, fingerprintKey: jobId });
         return;
       }
-      if (!injecting.has(card)) inject(card, jobId, { readOnly: true });
+      if (!injecting.has(card)) inject(card, jobId, { readOnly: false, fingerprintKey: jobId });
     });
 
     // Pass 2: discover new cards via dismiss button
@@ -374,7 +362,7 @@
 
       if (compKey) compKeyToJobId.set(compKey, fingerprintKey);
       if (!card.querySelector('.ljt-panel') && !injecting.has(card)) {
-        inject(card, fingerprintKey, { readOnly: true, fingerprintKey });
+        inject(card, fingerprintKey, { readOnly: false, fingerprintKey });
       }
     });
   }
@@ -399,7 +387,7 @@
         if (!fingerprintKey) return;
 
         compKeyToJobId.set(compKey, fingerprintKey);
-        rekeyPanel(card, fingerprintKey, { readOnly: true, fingerprintKey });
+        rekeyPanel(card, fingerprintKey, { readOnly: false, fingerprintKey });
       }, 0);
     }, true);
   }

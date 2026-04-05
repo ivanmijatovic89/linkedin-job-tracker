@@ -49,7 +49,7 @@ Data is stored in `chrome.storage.local` with this shape:
 }
 ```
 
-The key is derived from LinkedIn's `data-occludable-job-id` attribute when available, or a hash of the job title + company name as a fallback.
+The key is derived from a fingerprint of job title + company + location + workplace type.
 
 ## Updating / Reloading
 
@@ -60,5 +60,5 @@ After editing any file, go to `chrome://extensions` and click the **reload** ico
 To reset all tracked jobs, open the Chrome DevTools console on any LinkedIn page and run:
 
 ```js
-chrome.storage.local.clear(() => console.log('Cleared'));
+window.postMessage({ type: 'LJT_CLEAR' }, '*')
 ```
