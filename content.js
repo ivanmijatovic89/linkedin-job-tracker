@@ -4,7 +4,7 @@
   // STATUS_OPTIONS are defined in options.js (loaded first via manifest)
 
   // ── Config ────────────────────────────────────────────────────────────────
-  let ljtConfig = { colorLeft: true, colorRight: true };
+  let ljtConfig = { colorLeft: false, colorRight: false };
 
   // ── Utilities ─────────────────────────────────────────────────────────────
 

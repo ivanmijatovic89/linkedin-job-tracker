@@ -26,6 +26,13 @@
       </div>
       <div class="header-actions">
         <span class="header-time">Updated <span id="last-updated">—</span></span>
+        <button class="btn-config" id="btn-config" title="Settings">
+          <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="10" cy="10" r="3" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.22 4.22l1.42 1.42M14.36 14.36l1.42 1.42M4.22 15.78l1.42-1.42M14.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          Settings
+        </button>
         <button class="btn-clear" id="btn-clear" title="Clear all tracked jobs">
           <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M4 6h12M8 6V4h4v2M7 6l1 10h4l1-10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
@@ -107,6 +114,42 @@
   <main class="job-list-wrap">
     <div id="job-list" class="job-list"></div>
   </main>
+
+  <!-- Config Modal -->
+  <div class="modal-overlay" id="modal-config" hidden>
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">Settings</h2>
+        <button class="modal-close" id="modal-close" aria-label="Close settings">
+          <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 4L4 12M4 4l8 8" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </button>
+      </div>
+      <div class="modal-body">
+        <div class="setting-row">
+          <div class="setting-info">
+            <span class="setting-label">Color left panel cards</span>
+            <span class="setting-desc">Background tint on job cards in the search list</span>
+          </div>
+          <label class="toggle-wrap" for="cfg-color-left">
+            <input type="checkbox" id="cfg-color-left" class="toggle-input">
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          </label>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <span class="setting-label">Color right panel</span>
+            <span class="setting-desc">Background tint on job detail view</span>
+          </div>
+          <label class="toggle-wrap" for="cfg-color-right">
+            <input type="checkbox" id="cfg-color-right" class="toggle-input">
+            <span class="toggle-track"><span class="toggle-thumb"></span></span>
+          </label>
+        </div>
+      </div>
+    </div>
+  </div>
 
   <script src="options.js"></script>
   <script src="dashboard.js"></script>

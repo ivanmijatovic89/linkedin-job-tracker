@@ -250,7 +250,7 @@
     if (!confirmed) return;
 
     chrome.storage.local.get(null, all => {
-      const keys = Object.keys(all).filter(k => k.startsWith('ljt_'));
+      const keys = Object.keys(all).filter(k => k.startsWith('ljt_') && k !== 'ljt_settings');
       chrome.storage.local.remove(keys, () => init());
     });
   });
@@ -270,8 +270,47 @@
 
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'local') return;
-    const relevant = Object.keys(changes).some(k => k.startsWith('ljt_'));
+    const relevant = Object.keys(changes).some(k => k.startsWith('ljt_') && k !== 'ljt_settings');
     if (relevant) init();
+  });
+
+  // ── Settings (config modal) ───────────────────────────────────────────────
+
+  const DEFAULT_SETTINGS = { colorLeft: false, colorRight: false };
+
+  function loadSettings(cb) {
+    chrome.storage.local.get('ljt_settings', res => cb({ ...DEFAULT_SETTINGS, ...(res.ljt_settings || {}) }));
+  }
+
+  function saveSetting(key, value) {
+    loadSettings(current => {
+      chrome.storage.local.set({ ljt_settings: { ...current, [key]: value } });
+    });
+  }
+
+  function openModal() {
+    loadSettings(s => {
+      document.getElementById('cfg-color-left').checked  = s.colorLeft;
+      document.getElementById('cfg-color-right').checked = s.colorRight;
+      document.getElementById('modal-config').removeAttribute('hidden');
+    });
+  }
+
+  function closeModal() {
+    document.getElementById('modal-config').setAttribute('hidden', '');
+  }
+
+  document.getElementById('btn-config').addEventListener('click', openModal);
+  document.getElementById('modal-close').addEventListener('click', closeModal);
+  document.getElementById('modal-config').addEventListener('click', e => {
+    if (e.target === document.getElementById('modal-config')) closeModal();
+  });
+
+  document.getElementById('cfg-color-left').addEventListener('change', e => {
+    saveSetting('colorLeft', e.target.checked);
+  });
+  document.getElementById('cfg-color-right').addEventListener('change', e => {
+    saveSetting('colorRight', e.target.checked);
   });
 
   // ── Boot ──────────────────────────────────────────────────────────────────
