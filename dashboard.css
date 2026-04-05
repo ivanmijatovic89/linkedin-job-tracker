@@ -147,6 +147,35 @@ body::before {
   font-family: var(--font-data);
 }
 
+.btn-clear {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 16px;
+  background: transparent;
+  border: 1px solid rgba(251, 113, 133, 0.3);
+  border-radius: var(--radius);
+  color: var(--skip);
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: background 0.2s, border-color 0.2s;
+}
+
+.btn-clear svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.btn-clear:hover {
+  background: rgba(251, 113, 133, 0.1);
+  border-color: var(--skip);
+}
+
 .btn-refresh {
   display: flex;
   align-items: center;

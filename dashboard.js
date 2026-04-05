@@ -237,6 +237,18 @@
     render();
   });
 
+  document.getElementById('btn-clear').addEventListener('click', async () => {
+    const count = allJobs.length;
+    if (!count) return;
+    const confirmed = confirm(`Remove all ${count} tracked job${count === 1 ? '' : 's'}? This cannot be undone.`);
+    if (!confirmed) return;
+
+    chrome.storage.local.get(null, all => {
+      const keys = Object.keys(all).filter(k => k.startsWith('ljt_'));
+      chrome.storage.local.remove(keys, () => init());
+    });
+  });
+
   document.getElementById('btn-refresh').addEventListener('click', async () => {
     const btn = document.getElementById('btn-refresh');
     btn.disabled = true;
