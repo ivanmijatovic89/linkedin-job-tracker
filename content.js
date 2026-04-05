@@ -73,6 +73,18 @@
     });
   });
 
+  // Allow manual clear from page console:
+  // window.postMessage({ type: 'LJT_CLEAR' }, '*')
+  window.addEventListener('message', e => {
+    if (e.source !== window) return;
+    if (e.data?.type !== 'LJT_CLEAR') return;
+    chrome.storage.local.get(null, all => {
+      const toRemove = Object.keys(all).filter(k => k.startsWith('ljt_'));
+      if (toRemove.length) chrome.storage.local.remove(toRemove);
+      console.log('[LJT] cleared', toRemove.length, 'keys');
+    });
+  });
+
   // Sync all panels with the same jobId when storage changes (cross-panel live update)
   chrome.storage.onChanged.addListener((changes, area) => {
     if (area !== 'local') return;
