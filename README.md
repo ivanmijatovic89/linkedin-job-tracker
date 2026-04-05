@@ -35,8 +35,8 @@ Each job card gets a small inline panel with a **status dropdown** and **star ra
 | Status | Icon | Meaning |
 |---|---|---|
 | None | — | Not yet reviewed |
-| To Apply | 🎯 | Flagged to apply later |
 | Seen | 👁 | Reviewed, no decision yet |
+| To Apply | 🎯 | Flagged to apply later |
 | Applied | ✅ | Application submitted |
 | Skip | 🗑 | Not interested |
 
