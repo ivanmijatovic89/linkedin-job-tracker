@@ -45,11 +45,19 @@ Data is stored in `chrome.storage.local` with this shape:
 
 ```json
 {
-  "ljt_idx__<title>||<company>||<location>||<workplace>": { "status": "Applied", "rating": 4 }
+  "ljt_idx__<title>||<company>||<location>||<workplace>": {
+    "status": "Applied",
+    "rating": 4,
+    "id": "4381854620",
+    "title": "Lead Software Engineer AI - (Materia AI)",
+    "company": "Thomson Reuters",
+    "location": "New York, NY",
+    "workplace": "remote"
+  }
 }
 ```
 
-The key is a fingerprint built from: job title + company + location + workplace type.
+The key is a fingerprint built from: job title + company + location + workplace type. The value also stores those fields (plus numeric job id when available) to make later dashboards easier.
 
 ## Updating / Reloading
 

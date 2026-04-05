@@ -48,6 +48,16 @@
     return `ljt_idx__${t}||${c}||${l}||${w}`;
   }
 
+  function buildMeta({ id, title, company, location, workplace }) {
+    const meta = {};
+    if (id) meta.id = id;
+    if (title) meta.title = title;
+    if (company) meta.company = company;
+    if (location) meta.location = location;
+    if (workplace) meta.workplace = workplace;
+    return meta;
+  }
+
   // ── Storage ───────────────────────────────────────────────────────────────
 
   function loadData(key) {
@@ -56,9 +66,10 @@
     );
   }
 
-  function saveData(key, value) {
-    console.log('[LJT] save', key, value);
-    chrome.storage.local.set({ [key]: value });
+  function saveData(key, value, meta = null) {
+    const payload = meta ? { ...value, ...meta } : value;
+    console.log('[LJT] save', key, payload);
+    chrome.storage.local.set({ [key]: payload });
   }
 
   // Allow manual clear from page console:
@@ -94,7 +105,7 @@
     });
   }
 
-  function buildPanel(jobId, { status, rating } = {}, { readOnly = false, fingerprintKey = '' } = {}) {
+  function buildPanel(jobId, { status, rating } = {}, { readOnly = false, fingerprintKey = '', meta = null } = {}) {
     const safeStatus = status || 'None';
     const safeRating = Number.isFinite(rating) ? rating : 0;
     const panel = document.createElement('div');
@@ -119,7 +130,7 @@
     for (let i = 0; i <= 5; i++) {
       const o = document.createElement('option');
       o.value = String(i);
-      o.textContent = i === 0 ? '⭐' : `${i}⭐`;
+      o.textContent = i === 0 ? '⭐' : `${i} ⭐`;
       if (i === safeRating) o.selected = true;
       ratingSel.appendChild(o);
     }
@@ -141,14 +152,14 @@
     if (!readOnly) {
       sel.addEventListener('change', () => {
         sel.className = `ljt-select ljt-s-${sel.value.toLowerCase()}`;
-        saveData(jobId, { status: sel.value, rating: curRating });
+        saveData(jobId, { status: sel.value, rating: curRating }, meta);
       });
     }
 
     if (!readOnly) {
       ratingSel.addEventListener('change', () => {
         curRating = +ratingSel.value;
-        saveData(jobId, { status: sel.value, rating: curRating });
+        saveData(jobId, { status: sel.value, rating: curRating }, meta);
       });
     }
 
@@ -215,6 +226,9 @@
     injecting.add(card);
 
     const data = await loadData(jobId);
+    if (opts?.meta) {
+      saveData(jobId, data, opts.meta);
+    }
 
     if (!card.isConnected || card.querySelector('.ljt-panel')) {
       injecting.delete(card);
@@ -355,9 +369,10 @@
       const fingerprintKey = buildFingerprintKey(jobTitle, company, location, workplace);
       if (!fingerprintKey) return;
 
+      const meta = buildMeta({ title: jobTitle, company, location, workplace });
       if (compKey) compKeyToJobId.set(compKey, fingerprintKey);
       if (!card.querySelector('.ljt-panel') && !injecting.has(card)) {
-        inject(card, fingerprintKey, { readOnly: false, fingerprintKey });
+        inject(card, fingerprintKey, { readOnly: false, fingerprintKey, meta });
       }
     });
   }
@@ -381,8 +396,9 @@
         const fingerprintKey = buildFingerprintKey(jobTitle, company, location, workplace);
         if (!fingerprintKey) return;
 
+        const meta = buildMeta({ title: jobTitle, company, location, workplace });
         compKeyToJobId.set(compKey, fingerprintKey);
-        rekeyPanel(card, fingerprintKey, { readOnly: false, fingerprintKey });
+        rekeyPanel(card, fingerprintKey, { readOnly: false, fingerprintKey, meta });
       }, 0);
     }, true);
   }
@@ -425,6 +441,7 @@
       const { location, workplace } = extractLocationWorkplaceFromTexts(texts, jobTitle, company);
       const fingerprintKey = buildFingerprintKey(jobTitle, company, location, workplace);
       if (!fingerprintKey) return;
+      const meta = buildMeta({ id: numericId, title: jobTitle, company, location, workplace });
 
       if (injectedJobIds.has(numericId) && !container.querySelector('.ljt-panel')) {
         injectedJobIds.delete(numericId);
@@ -437,7 +454,7 @@
 
       injectedJobIds.clear();
       injectedJobIds.add(numericId);
-      inject(container, fingerprintKey, { readOnly: false, fingerprintKey });
+      inject(container, fingerprintKey, { readOnly: false, fingerprintKey, meta });
     });
   }
 
