@@ -45,11 +45,11 @@ Data is stored in `chrome.storage.local` with this shape:
 
 ```json
 {
-  "ljt_1234567890": { "status": "Applied", "rating": 4 }
+  "ljt_idx__<title>||<company>||<location>||<workplace>": { "status": "Applied", "rating": 4 }
 }
 ```
 
-The key is derived from a fingerprint of job title + company + location + workplace type.
+The key is a fingerprint built from: job title + company + location + workplace type.
 
 ## Updating / Reloading
 
