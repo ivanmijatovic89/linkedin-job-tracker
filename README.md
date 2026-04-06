@@ -4,6 +4,30 @@ A Chrome Extension (Manifest V3) that adds status tracking and rating directly t
 
 ![LinkedIn Search](screenshots/linkedin-search.png)
 
+## The Problem with LinkedIn Job Search
+
+Every day you open LinkedIn, run your search, and get the same 80 jobs you already went through yesterday — mixed in with 5 new ones. There's no way to tell which is which.
+
+And when a job doesn't fit? There's no way to mark it. No "not interested," no "skip" — it just keeps coming back, every single search, every single day.
+
+You end up re-reading the same listings over and over, wasting time on jobs you already decided against.
+
+## How LinkedIn Job Tracker Fixes This
+
+The idea is simple: go through your search results once and mark every job with a status. From then on, anything without a status is new.
+
+**A typical workflow:**
+
+1. Set up your search with the right filters — for example:
+   - *AI Agent · Remote · Posted last week · United States*
+   - *AI Agent · Remote · Posted last week · Europe*
+2. Go through all results (say 80 jobs) and mark each one — **To Apply**, **Skip**, **Seen**, or **Applied**
+3. Come back tomorrow — every untagged card is a job you haven't seen yet
+
+You stop re-reading jobs you've already dismissed. You spend your time only on what's actually new.
+
+---
+
 ## Features
 
 - **Inline status panel** on every job card — set status and rating without opening a new tab
