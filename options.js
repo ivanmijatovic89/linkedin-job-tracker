@@ -38,7 +38,7 @@ const LJT_STATUS_OPTIONS = [
   {
     value:    'Skip',
     label:    'Skip',
-    icon:     '🗑',
+    icon:     '❌',
     cssKey:   'skip',
     color:    '#fb7185',
     colorDim: 'rgba(251,113,133,0.12)',

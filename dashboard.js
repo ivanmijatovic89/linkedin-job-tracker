@@ -313,6 +313,54 @@
     saveSetting('colorRight', e.target.checked);
   });
 
+  document.getElementById('btn-export').addEventListener('click', () => {
+    chrome.storage.local.get(null, all => {
+      const data = {};
+      for (const [k, v] of Object.entries(all)) {
+        if (k.startsWith('ljt_') && k !== 'ljt_settings') data[k] = v;
+      }
+      const json = JSON.stringify(data, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `job-tracker-backup-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  });
+
+  document.getElementById('btn-import').addEventListener('click', () => {
+    document.getElementById('import-file').click();
+  });
+
+  document.getElementById('import-file').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      let data;
+      try {
+        data = JSON.parse(ev.target.result);
+      } catch {
+        alert('Invalid JSON file.');
+        return;
+      }
+      const valid = Object.entries(data).filter(([k]) => k.startsWith('ljt_') && k !== 'ljt_settings');
+      if (!valid.length) {
+        alert('No valid job data found in this file.');
+        return;
+      }
+      const toImport = Object.fromEntries(valid);
+      chrome.storage.local.set(toImport, () => {
+        e.target.value = '';
+        closeModal();
+        init();
+      });
+    };
+    reader.readAsText(file);
+  });
+
   // ── Boot ──────────────────────────────────────────────────────────────────
 
   init();

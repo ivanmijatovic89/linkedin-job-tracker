@@ -147,6 +147,22 @@
             <span class="toggle-track"><span class="toggle-thumb"></span></span>
           </label>
         </div>
+        <div class="setting-divider"></div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <span class="setting-label">Export Jobs</span>
+            <span class="setting-desc">Download all tracked jobs as a JSON backup</span>
+          </div>
+          <button class="btn-action" id="btn-export">Export</button>
+        </div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <span class="setting-label">Import Jobs</span>
+            <span class="setting-desc">Restore from a JSON backup — merges with existing data</span>
+          </div>
+          <button class="btn-action" id="btn-import">Import</button>
+          <input type="file" id="import-file" accept=".json" style="display:none">
+        </div>
       </div>
     </div>
   </div>
