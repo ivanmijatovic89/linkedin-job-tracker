@@ -79,9 +79,12 @@ Click the extension icon to open the dashboard:
 - **Filter by status** — show only jobs with a specific status
 - **Sort** — newest, oldest, title, company, or rating
 - **Group** — toggle grouping by status
-- **Settings** (⚙ gear icon) — configure background color tinting:
+- **Settings** (⚙ gear icon) — configure background color tinting and data management:
   - *Color left panel cards* — background tint on job cards in the search list
   - *Color right panel* — background tint on the job detail view
+  - *Export Jobs* — downloads all tracked jobs as a dated JSON file (e.g. `job-tracker-backup-2026-04-23.json`)
+  - *Import Jobs* — restores jobs from a backup file; merges with existing data (existing jobs not in the file are kept, overlapping keys are overwritten by the backup)
+  - *Clear All* — permanently removes all tracked jobs
 
 ---
 
@@ -133,7 +136,7 @@ Settings are stored under `ljt_settings` and are excluded from the **Clear All**
 
 ## Clearing Data
 
-Use the **Clear All** button in the dashboard, or run this in the Chrome DevTools console on any LinkedIn page:
+Use the **Clear All** button in the dashboard Settings modal, or run this in the Chrome DevTools console on any LinkedIn page:
 
 ```js
 window.postMessage({ type: 'LJT_CLEAR' }, '*')

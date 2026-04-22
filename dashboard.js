@@ -292,6 +292,9 @@
     loadSettings(s => {
       document.getElementById('cfg-color-left').checked  = s.colorLeft;
       document.getElementById('cfg-color-right').checked = s.colorRight;
+      const count = allJobs.length;
+      document.getElementById('export-desc').textContent =
+        `Download ${count} tracked job${count === 1 ? '' : 's'} as a JSON backup`;
       document.getElementById('modal-config').removeAttribute('hidden');
     });
   }

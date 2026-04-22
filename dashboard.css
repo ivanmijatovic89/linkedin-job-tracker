@@ -846,3 +846,14 @@ body::before {
   border-color: var(--accent);
   color: var(--accent);
 }
+
+.btn-action--danger {
+  border-color: rgba(251, 113, 133, 0.3);
+  color: var(--skip);
+}
+
+.btn-action--danger:hover {
+  background: rgba(251, 113, 133, 0.1);
+  border-color: var(--skip);
+  color: var(--skip);
+}

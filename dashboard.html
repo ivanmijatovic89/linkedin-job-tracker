@@ -27,17 +27,11 @@
       <div class="header-actions">
         <span class="header-time">Updated <span id="last-updated">—</span></span>
         <button class="btn-config" id="btn-config" title="Settings">
-          <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="10" cy="10" r="3" stroke="currentColor" stroke-width="1.5"/>
-            <path d="M10 2v2M10 16v2M2 10h2M16 10h2M4.22 4.22l1.42 1.42M14.36 14.36l1.42 1.42M4.22 15.78l1.42-1.42M14.36 5.64l1.42-1.42" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
           Settings
-        </button>
-        <button class="btn-clear" id="btn-clear" title="Clear all tracked jobs">
-          <svg viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M4 6h12M8 6V4h4v2M7 6l1 10h4l1-10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          Clear All
         </button>
         <button class="btn-refresh" id="btn-refresh" title="Refresh data">
           <svg class="refresh-icon" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -151,7 +145,7 @@
         <div class="setting-row">
           <div class="setting-info">
             <span class="setting-label">Export Jobs</span>
-            <span class="setting-desc">Download all tracked jobs as a JSON backup</span>
+            <span class="setting-desc" id="export-desc">Download all tracked jobs as a JSON backup</span>
           </div>
           <button class="btn-action" id="btn-export">Export</button>
         </div>
@@ -162,6 +156,14 @@
           </div>
           <button class="btn-action" id="btn-import">Import</button>
           <input type="file" id="import-file" accept=".json" style="display:none">
+        </div>
+        <div class="setting-divider"></div>
+        <div class="setting-row">
+          <div class="setting-info">
+            <span class="setting-label">Clear All Jobs</span>
+            <span class="setting-desc">Permanently remove all tracked jobs — cannot be undone</span>
+          </div>
+          <button class="btn-action btn-action--danger" id="btn-clear">Clear All</button>
         </div>
       </div>
     </div>
