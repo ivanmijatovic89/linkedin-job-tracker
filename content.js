@@ -298,6 +298,13 @@
         panel._ljtSync?.(newValue);
       });
     });
+
+    const jobDataTouched = Object.keys(changes).some(k => isJobDataKey(k));
+    if (jobDataTouched) {
+      document.querySelectorAll('.ljt-panel').forEach(panel => {
+        panel._ljtRefreshCounts?.();
+      });
+    }
   });
 
   // ── UI builder ────────────────────────────────────────────────────────────
@@ -310,11 +317,12 @@
     });
   }
 
-  function buildPanel(jobId, { status, rating, seen_at, seen_at_first, seen_at_last } = {}, { readOnly = false, fingerprintKey = '', jobNumericId = '', meta = null, onStatusChange = null, company = '' } = {}) {
+  function buildPanel(jobId, { status, rating, seen_at, seen_at_first, seen_at_last } = {}, { readOnly = false, fingerprintKey = '', jobNumericId = '', meta = null, onStatusChange = null, company = '', companySlug = '', roleTitle = '', panelSide = 'right' } = {}) {
     const safeStatus = status || 'None';
     const safeRating = Number.isFinite(rating) ? rating : 0;
     const panel = document.createElement('div');
     panel.className = 'ljt-panel';
+    panel.classList.add(panelSide === 'left' ? 'ljt-panel-left' : 'ljt-panel-right');
     panel.setAttribute('data-ljt-id', jobId);
     if (fingerprintKey) panel.setAttribute('data-ljt-fp', fingerprintKey);
 
@@ -368,6 +376,18 @@
     panel.appendChild(blSel);
     panel._ljtSyncBlacklist = renderBlSel;
 
+    // ID/C/R badges host:
+    // - left panel: move badges to the second row
+    // - right panel: keep badges inline
+    const badgesHost = panelSide === 'left'
+      ? (() => {
+        const row = document.createElement('div');
+        row.className = 'ljt-badges-row';
+        panel.appendChild(row);
+        return row;
+      })()
+      : panel;
+
     // Small ID badge on panel ("ID 123..." / "NO ID")
     const idBadge = document.createElement('span');
     idBadge.className = 'ljt-job-id';
@@ -383,7 +403,61 @@
       idBadge.title = hasId ? `LinkedIn Job ID: ${normalized}` : 'LinkedIn Job ID not available';
     };
     renderIdBadge(initialId);
-    panel.appendChild(idBadge);
+    badgesHost.appendChild(idBadge);
+
+    // Company counters (strict slug-only, statuses != None)
+    let resolvedCompanySlug = normalizeKeyPart(companySlug || meta?.company_slug || '');
+    let resolvedRoleTitle = normalizeText(roleTitle || meta?.title || '');
+    const companyCountBadge = document.createElement('span');
+    companyCountBadge.className = 'ljt-count-badge ljt-count-badge--company';
+    const roleCountBadge = document.createElement('span');
+    roleCountBadge.className = 'ljt-count-badge ljt-count-badge--role';
+    badgesHost.appendChild(companyCountBadge);
+    badgesHost.appendChild(roleCountBadge);
+
+    const renderCountsBadges = (companyCount, roleCount, hasSlug, hasRole) => {
+      const off = !hasSlug;
+      companyCountBadge.classList.toggle('ljt-count-badge--off', off);
+      roleCountBadge.classList.toggle('ljt-count-badge--off', off || !hasRole);
+      companyCountBadge.textContent = hasSlug ? `C:${companyCount}` : 'C:-';
+      roleCountBadge.textContent = (hasSlug && hasRole) ? `R:${roleCount}` : 'R:-';
+      companyCountBadge.title = hasSlug
+        ? `Tracked jobs (status != None) in company slug "${resolvedCompanySlug}": ${companyCount}`
+        : 'Company slug missing';
+      roleCountBadge.title = (hasSlug && hasRole)
+        ? `Tracked jobs (status != None) with same company+title: ${roleCount}`
+        : 'Role counter unavailable';
+    };
+
+    const refreshCounts = () => {
+      const hasSlug = !!resolvedCompanySlug;
+      const hasRole = !!resolvedRoleTitle;
+      if (!hasSlug) {
+        renderCountsBadges(0, 0, false, hasRole);
+        return;
+      }
+      chrome.storage.local.get(null, all => {
+        let companyCount = 0;
+        let roleCount = 0;
+        const seenIdentity = new Set();
+        Object.entries(all).forEach(([key, val]) => {
+          if (!isJobDataKey(key)) return;
+          if (!val || !val.status || val.status === 'None') return;
+          const slug = normalizeKeyPart(val.company_slug || '');
+          if (!slug || slug !== resolvedCompanySlug) return;
+          const identity = val.id ? `id:${val.id}` : `key:${key}`;
+          if (seenIdentity.has(identity)) return;
+          seenIdentity.add(identity);
+          companyCount += 1;
+          if (hasRole && normalizeText(val.title || '') === resolvedRoleTitle) {
+            roleCount += 1;
+          }
+        });
+        renderCountsBadges(companyCount, roleCount, true, hasRole);
+      });
+    };
+    panel._ljtRefreshCounts = refreshCounts;
+    refreshCounts();
 
     if (!readOnly) {
       blSel.addEventListener('change', () => {
@@ -445,7 +519,7 @@
     }
 
     // Expose a sync method so the storage listener can update this panel from outside
-    panel._ljtSync = ({ status: s, rating: r, seen_at: sa, seen_at_first: saf, seen_at_last: sal, id }) => {
+    panel._ljtSync = ({ status: s, rating: r, seen_at: sa, seen_at_first: saf, seen_at_last: sal, id, company_slug: cslug, title }) => {
       if (sel.value !== s) {
         sel.value = s;
         sel.className = `ljt-select ljt-s-${ljtStatusCssKey(s)}`;
@@ -468,6 +542,13 @@
       if (id) {
         renderIdBadge(id);
       }
+      if (cslug) {
+        resolvedCompanySlug = normalizeKeyPart(cslug);
+      }
+      if (title) {
+        resolvedRoleTitle = normalizeText(title);
+      }
+      refreshCounts();
     };
 
     return panel;
@@ -583,10 +664,12 @@
 
     // Inject into the inner text column so the panel sits below the date/apply line
     const side = opts.panelSide || 'left';
-    const company = opts?.meta?.company || '';
+    const company = opts?.meta?.company || data?.company || '';
+    const companySlug = opts?.meta?.company_slug || data?.company_slug || '';
+    const roleTitle = opts?.meta?.title || data?.title || '';
     const onStatusChange = (status) => applyCardStatusClass(card, status, side, company);
     const target = findTextContainer(card);
-    target.appendChild(buildPanel(jobId, data, { ...opts, onStatusChange, company }));
+    target.appendChild(buildPanel(jobId, data, { ...opts, onStatusChange, company, companySlug, roleTitle }));
     applyCardStatusClass(card, data.status || 'None', side, company);
     injecting.delete(card);
     watchCard(card, jobId, opts);
