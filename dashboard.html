@@ -72,6 +72,11 @@
       <span class="stat-label">🗑 Skipped</span>
       <div class="stat-bar-fill"></div>
     </div>
+    <div class="stat-card stat-blacklist">
+      <span class="stat-num" id="stat-blacklist">—</span>
+      <span class="stat-label">🚫 Blacklisted</span>
+      <div class="stat-bar-fill"></div>
+    </div>
   </div>
 
   <div class="controls-bar">
@@ -89,6 +94,7 @@
         <option value="Seen">👁 Seen</option>
         <option value="Applied">✅ Applied</option>
         <option value="Skip">🗑 Skip</option>
+        <option value="__blacklist__">🚫 Blacklisted company</option>
       </select>
       <select id="sort" class="ctrl-select">
         <option value="newest">Newest first</option>
@@ -106,6 +112,19 @@
   </div>
 
   <main class="job-list-wrap">
+    <section id="blacklist-section" class="blacklist-section" hidden>
+      <header class="blacklist-header">
+        <h2 class="blacklist-title">🚫 Blacklisted Companies <span class="blacklist-count" id="blacklist-count">0</span></h2>
+        <div class="search-wrap search-wrap--sm">
+          <svg class="search-icon" viewBox="0 0 20 20" fill="none">
+            <circle cx="9" cy="9" r="6" stroke="currentColor" stroke-width="1.5"/>
+            <path d="M13.5 13.5L17 17" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+          <input type="search" id="blacklist-search" class="search-input" placeholder="Search blacklisted companies…" autocomplete="off" spellcheck="false">
+        </div>
+      </header>
+      <ul id="blacklist-list" class="blacklist-list"></ul>
+    </section>
     <div id="job-list" class="job-list"></div>
   </main>
 

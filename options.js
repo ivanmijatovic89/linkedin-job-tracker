@@ -54,3 +54,22 @@ function ljtStatusOption(value) {
 function ljtStatusCssKey(value) {
   return ljtStatusOption(value).cssKey;
 }
+
+// ── Company Blacklist ─────────────────────────────────────────────────────────
+const LJT_BL_PREFIX = 'ljt_bl__';
+
+const LJT_BLACKLIST_CONFIG = {
+  cssKey:   'blacklist',
+  color:    '#000000',
+  colorDim: 'rgba(0,0,0,0.85)',
+  icon:     '🚫',
+  label:    'Blacklisted',
+};
+
+function ljtNormalizeCompany(name) {
+  return String(name || '').replace(/\s+/g, ' ').trim().toLowerCase();
+}
+
+function ljtBlacklistKey(company) {
+  return LJT_BL_PREFIX + ljtNormalizeCompany(company);
+}

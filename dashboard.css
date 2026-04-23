@@ -308,6 +308,9 @@ body::before {
 .stat-applied  .stat-num { color: var(--applied); }
 .stat-seen     .stat-num { color: var(--seen); }
 .stat-skip     .stat-num { color: var(--skip); }
+.stat-blacklist .stat-num { color: #f3f4f6; }
+.stat-blacklist::before { background: linear-gradient(90deg, #dc2626, transparent); }
+.stat-card:hover.stat-blacklist { border-color: rgba(220,38,38,0.4); }
 
 .stat-label {
   font-family: var(--font-ui);
@@ -856,4 +859,145 @@ body::before {
   background: rgba(251, 113, 133, 0.1);
   border-color: var(--skip);
   color: var(--skip);
+}
+
+/* ── Blacklist Section ──────────────────────────────────────────────────────── */
+.blacklist-section {
+  max-width: 1280px;
+  margin: 0 auto 24px;
+  padding: 16px 28px;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  background: rgba(17, 17, 17, 0.55);
+}
+
+.blacklist-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.blacklist-title {
+  font-family: var(--font-ui);
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  color: #f3f4f6;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.blacklist-count {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #fff;
+  background: #dc2626;
+  padding: 2px 8px;
+  border-radius: 10px;
+  letter-spacing: 0.05em;
+}
+
+.search-wrap--sm {
+  flex: 1;
+  max-width: 360px;
+  min-width: 180px;
+}
+
+.blacklist-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.blacklist-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 14px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(220, 38, 38, 0.35);
+  border-radius: var(--radius);
+  color: #f3f4f6;
+  font-family: var(--font-ui);
+  font-size: 0.95rem;
+}
+
+.blacklist-item-name {
+  font-weight: 600;
+  flex: 1;
+}
+
+.blacklist-item-date {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  color: var(--text-2);
+}
+
+.blacklist-unbtn {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.25);
+  color: #f3f4f6;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.04em;
+  transition: all 0.15s;
+}
+
+.blacklist-unbtn:hover {
+  background: #dc2626;
+  border-color: #dc2626;
+  color: #fff;
+}
+
+.blacklist-empty {
+  padding: 14px;
+  text-align: center;
+  color: var(--text-2);
+  font-style: italic;
+  font-size: 0.9rem;
+}
+
+/* ── Dashboard job card: blacklisted variant ───────────────────────────────── */
+.job-card.is-blacklisted {
+  background: #111 !important;
+  border-color: #dc2626 !important;
+  position: relative;
+}
+
+.job-card.is-blacklisted,
+.job-card.is-blacklisted * {
+  color: #e5e7eb !important;
+}
+
+.job-card.is-blacklisted a {
+  color: #f3f4f6 !important;
+}
+
+.job-card.is-blacklisted::after {
+  content: "🚫 BLACKLISTED";
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  background: #dc2626;
+  color: #fff;
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 2px 8px;
+  border-radius: 3px;
+  pointer-events: none;
 }

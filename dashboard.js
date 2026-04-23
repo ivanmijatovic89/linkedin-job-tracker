@@ -4,11 +4,14 @@
   // ── State ─────────────────────────────────────────────────────────────────
 
   let allJobs = [];
+  let blacklist = []; // [{ key, company, created_at }]
+  let blacklistSet = new Set(); // normalized company names
   const filters = {
     search: '',
     status: '',
     sort: 'newest',
     group: false,
+    blacklistSearch: '',
   };
 
   // ── Storage ───────────────────────────────────────────────────────────────
@@ -25,12 +28,23 @@
     };
   }
 
-  async function loadJobs() {
+  async function loadAll() {
     return new Promise(resolve => {
       chrome.storage.local.get(null, all => {
         const jobs = [];
+        const bl = [];
         for (const [key, val] of Object.entries(all)) {
-          if (!key.startsWith('ljt_')) continue;
+          if (key.startsWith(LJT_BL_PREFIX)) {
+            if (val && val.company) {
+              bl.push({
+                key,
+                company: val.company,
+                created_at: val.created_at || 0,
+              });
+            }
+            continue;
+          }
+          if (!key.startsWith('ljt_idx__')) continue;
           if (!val || !val.status || val.status === 'None') continue;
 
           const fb = parseKeyFallback(key);
@@ -46,7 +60,7 @@
             workplace: val.workplace || fb.workplace || '',
           });
         }
-        resolve(jobs);
+        resolve({ jobs, blacklist: bl });
       });
     });
   }
@@ -66,7 +80,9 @@
       );
     }
 
-    if (filters.status) {
+    if (filters.status === '__blacklist__') {
+      result = result.filter(j => blacklistSet.has(ljtNormalizeCompany(j.company)));
+    } else if (filters.status) {
       result = result.filter(j => j.status === filters.status);
     }
 
@@ -123,9 +139,10 @@
       : titleText;
 
     const pillLabel = opt.icon ? `${opt.icon} ${esc(job.status)}` : esc(job.status);
+    const blCls = blacklistSet.has(ljtNormalizeCompany(job.company)) ? ' is-blacklisted' : '';
 
     return `
-      <div class="job-card status-${sc}">
+      <div class="job-card status-${sc}${blCls}">
         <div class="job-card-accent"></div>
         <div class="job-card-body">
           <div class="job-card-top">
@@ -196,11 +213,49 @@
   // ── Update stats ──────────────────────────────────────────────────────────
 
   function updateStats() {
-    document.getElementById('stat-total').textContent    = allJobs.length;
-    document.getElementById('stat-to-apply').textContent = allJobs.filter(j => j.status === 'To Apply').length;
-    document.getElementById('stat-applied').textContent  = allJobs.filter(j => j.status === 'Applied').length;
-    document.getElementById('stat-seen').textContent     = allJobs.filter(j => j.status === 'Seen').length;
-    document.getElementById('stat-skip').textContent     = allJobs.filter(j => j.status === 'Skip').length;
+    document.getElementById('stat-total').textContent     = allJobs.length;
+    document.getElementById('stat-to-apply').textContent  = allJobs.filter(j => j.status === 'To Apply').length;
+    document.getElementById('stat-applied').textContent   = allJobs.filter(j => j.status === 'Applied').length;
+    document.getElementById('stat-seen').textContent      = allJobs.filter(j => j.status === 'Seen').length;
+    document.getElementById('stat-skip').textContent      = allJobs.filter(j => j.status === 'Skip').length;
+    document.getElementById('stat-blacklist').textContent = blacklist.length;
+  }
+
+  // ── Blacklist render ──────────────────────────────────────────────────────
+
+  function renderBlacklist() {
+    const section = document.getElementById('blacklist-section');
+    const list = document.getElementById('blacklist-list');
+    const countEl = document.getElementById('blacklist-count');
+    countEl.textContent = blacklist.length;
+
+    if (!blacklist.length) {
+      section.setAttribute('hidden', '');
+      list.innerHTML = '';
+      return;
+    }
+    section.removeAttribute('hidden');
+
+    const q = filters.blacklistSearch.toLowerCase();
+    const filtered = [...blacklist]
+      .filter(b => !q || b.company.toLowerCase().includes(q))
+      .sort((a, b) => (b.created_at || 0) - (a.created_at || 0));
+
+    if (!filtered.length) {
+      list.innerHTML = `<li class="blacklist-empty">No matches for "${esc(filters.blacklistSearch)}"</li>`;
+      return;
+    }
+
+    list.innerHTML = filtered.map(b => {
+      const date = b.created_at ? formatDate(b.created_at) : '';
+      return `
+        <li class="blacklist-item" data-key="${esc(b.key)}">
+          <span class="blacklist-item-name">${esc(b.company)}</span>
+          ${date ? `<span class="blacklist-item-date">${date}</span>` : ''}
+          <button class="blacklist-unbtn" data-key="${esc(b.key)}" type="button">Unblacklist</button>
+        </li>
+      `;
+    }).join('');
   }
 
   // ── Main render ───────────────────────────────────────────────────────────
@@ -210,12 +265,16 @@
     const list = document.getElementById('job-list');
     list.innerHTML = filters.group ? renderGrouped(filtered) : renderFlat(filtered);
     updateStats();
+    renderBlacklist();
   }
 
   // ── Init ──────────────────────────────────────────────────────────────────
 
   async function init() {
-    allJobs = await loadJobs();
+    const { jobs, blacklist: bl } = await loadAll();
+    allJobs = jobs;
+    blacklist = bl;
+    blacklistSet = new Set(bl.map(b => ljtNormalizeCompany(b.company)));
     render();
     document.getElementById('last-updated').textContent =
       new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
@@ -241,6 +300,19 @@
   document.getElementById('group-toggle').addEventListener('change', e => {
     filters.group = e.target.checked;
     render();
+  });
+
+  document.getElementById('blacklist-search').addEventListener('input', e => {
+    filters.blacklistSearch = e.target.value.trim();
+    renderBlacklist();
+  });
+
+  document.getElementById('blacklist-list').addEventListener('click', e => {
+    const btn = e.target.closest('.blacklist-unbtn');
+    if (!btn) return;
+    const key = btn.dataset.key;
+    if (!key) return;
+    chrome.storage.local.remove(key);
   });
 
   document.getElementById('btn-clear').addEventListener('click', async () => {

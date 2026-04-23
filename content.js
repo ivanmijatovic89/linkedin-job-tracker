@@ -6,6 +6,25 @@
   // ── Config ────────────────────────────────────────────────────────────────
   let ljtConfig = { colorLeft: false, colorRight: false };
 
+  // ── Blacklist cache ───────────────────────────────────────────────────────
+  const blacklistSet = new Set();
+
+  function isBlacklisted(company) {
+    if (!company) return false;
+    return blacklistSet.has(ljtNormalizeCompany(company));
+  }
+
+  function reapplyAllBlacklistClasses() {
+    document.querySelectorAll('[data-ljt-side]').forEach(el => {
+      const side = el.dataset.ljtSide;
+      const status = el.dataset.ljtStatus || 'None';
+      const company = el.dataset.ljtCompany || '';
+      applyCardStatusClass(el, status, side, company, /*targetIsAlready=*/ true);
+      const panel = el.querySelector('.ljt-panel');
+      panel?._ljtSyncBlacklist?.();
+    });
+  }
+
   // ── Utilities ─────────────────────────────────────────────────────────────
 
   function normalizeText(str) {
@@ -85,7 +104,11 @@
 
   function loadData(key) {
     return new Promise(resolve =>
-      chrome.storage.local.get(key, res => resolve(res[key] ?? { status: 'None', rating: 0 }))
+      chrome.storage.local.get(key, res => {
+        const found = res[key];
+        console.log('[LJT] load', key, found ? `→ ${found.status}` : '→ MISS (None)');
+        resolve(found ?? { status: 'None', rating: 0 });
+      })
     );
   }
 
@@ -114,20 +137,23 @@
     // Handle settings changes — re-apply or remove card background colors
     if (changes['ljt_settings']) {
       ljtConfig = { colorLeft: true, colorRight: true, ...(changes['ljt_settings'].newValue || {}) };
-      document.querySelectorAll('[data-ljt-side]').forEach(el => {
-        const side = el.dataset.ljtSide;
-        const status = el.dataset.ljtStatus || 'None';
-        const shouldColor = side === 'left' ? ljtConfig.colorLeft : ljtConfig.colorRight;
-        [...el.classList].filter(c => c.startsWith('ljt-card-')).forEach(c => el.classList.remove(c));
-        if (shouldColor) {
-          const cssKey = ljtStatusCssKey(status);
-          if (cssKey !== 'none') el.classList.add(`ljt-card-${cssKey}`);
-        }
-      });
+      reapplyAllBlacklistClasses();
     }
+
+    // Handle blacklist changes — update local set and reapply classes on all visible cards
+    let blacklistTouched = false;
+    Object.entries(changes).forEach(([key, { newValue, oldValue }]) => {
+      if (!key.startsWith(LJT_BL_PREFIX)) return;
+      blacklistTouched = true;
+      const norm = key.slice(LJT_BL_PREFIX.length);
+      if (newValue) blacklistSet.add(norm);
+      else blacklistSet.delete(norm);
+    });
+    if (blacklistTouched) reapplyAllBlacklistClasses();
 
     Object.entries(changes).forEach(([key, { newValue }]) => {
       if (!newValue) return;
+      if (key.startsWith(LJT_BL_PREFIX)) return;
       document.querySelectorAll(`.ljt-panel[data-ljt-id="${CSS.escape(key)}"]`).forEach(panel => {
         panel._ljtSync?.(newValue);
       });
@@ -144,9 +170,10 @@
     });
   }
 
-  function buildPanel(jobId, { status, rating, seen_at } = {}, { readOnly = false, fingerprintKey = '', meta = null, onStatusChange = null } = {}) {
+  function buildPanel(jobId, { status, rating, seen_at } = {}, { readOnly = false, fingerprintKey = '', meta = null, onStatusChange = null, company = '' } = {}) {
     const safeStatus = status || 'None';
     const safeRating = Number.isFinite(rating) ? rating : 0;
+    console.log('[LJT] buildPanel', jobId, 'status=', safeStatus, 'company=', company);
     const panel = document.createElement('div');
     panel.className = 'ljt-panel';
     panel.setAttribute('data-ljt-id', jobId);
@@ -176,6 +203,45 @@
 
     panel.appendChild(sel);
     panel.appendChild(ratingSel);
+
+    // Blacklist select — per-company toggle (select so change event isn't blocked by panel capture handler)
+    const blSel = document.createElement('select');
+    blSel.className = 'ljt-select ljt-bl-select';
+    if (readOnly || !company) blSel.disabled = true;
+    const OPT_OK = document.createElement('option');
+    OPT_OK.value = 'ok';
+    OPT_OK.textContent = '🏢 Company';
+    const OPT_BL = document.createElement('option');
+    OPT_BL.value = 'bl';
+    OPT_BL.textContent = '🚫 Blacklisted';
+    blSel.appendChild(OPT_OK);
+    blSel.appendChild(OPT_BL);
+
+    const renderBlSel = () => {
+      const on = isBlacklisted(company);
+      blSel.value = on ? 'bl' : 'ok';
+      blSel.classList.toggle('ljt-bl-select--on', on);
+      blSel.title = company
+        ? (on ? `Blacklisted: "${company}"` : `Mark "${company}" as blacklisted`)
+        : 'Company not detected';
+    };
+    renderBlSel();
+    panel.appendChild(blSel);
+    panel._ljtSyncBlacklist = renderBlSel;
+
+    if (!readOnly) {
+      blSel.addEventListener('change', () => {
+        if (!company) return;
+        const key = ljtBlacklistKey(company);
+        if (blSel.value === 'bl') {
+          chrome.storage.local.set({
+            [key]: { company: normalizeText(company), created_at: Date.now() },
+          });
+        } else {
+          chrome.storage.local.remove(key);
+        }
+      });
+    }
 
     let curRating = safeRating;
     let seenAt = seen_at || null;
@@ -209,6 +275,7 @@
 
     // Expose a sync method so the storage listener can update this panel from outside
     panel._ljtSync = ({ status: s, rating: r, seen_at: sa }) => {
+      console.log('[LJT] _ljtSync', jobId, sel.value, '→', s);
       if (sel.value !== s) {
         sel.value = s;
         sel.className = `ljt-select ljt-s-${ljtStatusCssKey(s)}`;
@@ -267,18 +334,27 @@
     return (el && el !== card) ? el : card;
   }
 
-  function applyCardStatusClass(card, status, side) {
+  function applyCardStatusClass(card, status, side, company = '', targetIsAlready = false) {
     // For left panel, walk up to [componentkey] root; for right, use card as-is
-    const target = side === 'left' ? (card.closest('[componentkey]') || card) : card;
+    const target = targetIsAlready
+      ? card
+      : (side === 'left' ? (card.closest('[componentkey]') || card) : card);
     const shouldColor = side === 'right' ? ljtConfig.colorRight : ljtConfig.colorLeft;
 
-    // Store side + status so settings changes can re-apply without re-injection
+    // Store side + status + company so settings/blacklist changes can re-apply without re-injection
     target.dataset.ljtSide = side;
     target.dataset.ljtStatus = status;
+    if (company) target.dataset.ljtCompany = company;
 
     [...target.classList]
       .filter(c => c.startsWith('ljt-card-'))
       .forEach(c => target.classList.remove(c));
+
+    // Blacklist always wins over status color
+    if (isBlacklisted(target.dataset.ljtCompany)) {
+      target.classList.add('ljt-card-blacklist');
+      return;
+    }
 
     if (shouldColor) {
       const cssKey = ljtStatusCssKey(status);
@@ -308,10 +384,11 @@
 
     // Inject into the inner text column so the panel sits below the date/apply line
     const side = opts.panelSide || 'left';
-    const onStatusChange = (status) => applyCardStatusClass(card, status, side);
+    const company = opts?.meta?.company || '';
+    const onStatusChange = (status) => applyCardStatusClass(card, status, side, company);
     const target = findTextContainer(card);
-    target.appendChild(buildPanel(jobId, data, { ...opts, onStatusChange }));
-    applyCardStatusClass(card, data.status || 'None', side);
+    target.appendChild(buildPanel(jobId, data, { ...opts, onStatusChange, company }));
+    applyCardStatusClass(card, data.status || 'None', side, company);
     injecting.delete(card);
     watchCard(card, jobId, opts);
   }
@@ -573,9 +650,12 @@
 
   observer.observe(document.documentElement, { childList: true, subtree: true });
 
-  // Load config before first scan so colors are applied correctly on page load
-  chrome.storage.local.get('ljt_settings', res => {
+  // Load config + blacklist before first scan so colors are applied correctly on page load
+  chrome.storage.local.get(null, res => {
     if (res.ljt_settings) ljtConfig = { ...ljtConfig, ...res.ljt_settings };
+    Object.keys(res).forEach(k => {
+      if (k.startsWith(LJT_BL_PREFIX)) blacklistSet.add(k.slice(LJT_BL_PREFIX.length));
+    });
     scanAll();
     setTimeout(scanAll, 1500);
     setTimeout(scanAll, 4000);

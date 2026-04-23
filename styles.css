@@ -161,3 +161,62 @@
   border-color: rgba(255, 255, 255, 0.55);
   border-left-width: 1px;
 }
+
+/* ── Blacklist select ─────────────────────────────────────────────────────── */
+
+.ljt-bl-select {
+  min-width: 120px;
+}
+
+.ljt-bl-select.ljt-bl-select--on {
+  background-color: #111;
+  border-color: #111;
+  color: #fff;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%23fff'/%3E%3C/svg%3E");
+}
+
+/* ── Blacklisted card — black overrides any status color ───────────────────── */
+
+.ljt-card-blacklist {
+  background-color: #111 !important;
+  color: #e5e7eb !important;
+  position: relative;
+}
+
+.ljt-card-blacklist *:not(.ljt-panel):not(.ljt-panel *) {
+  color: #e5e7eb !important;
+  border-color: #333 !important;
+}
+
+.ljt-card-blacklist a:not(.ljt-panel a) {
+  color: #f3f4f6 !important;
+}
+
+.ljt-card-blacklist img,
+.ljt-card-blacklist svg {
+  opacity: 0.35;
+  filter: grayscale(1);
+}
+
+.ljt-card-blacklist::before {
+  content: "🚫 BLACKLISTED";
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: #dc2626;
+  color: #fff;
+  font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  z-index: 10;
+  pointer-events: none;
+}
+
+/* Panel inside a blacklisted card */
+.ljt-card-blacklist .ljt-panel {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+}
