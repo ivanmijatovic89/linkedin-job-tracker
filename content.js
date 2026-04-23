@@ -415,31 +415,43 @@
     badgesHost.appendChild(companyCountBadge);
     badgesHost.appendChild(roleCountBadge);
 
-    const renderCountsBadges = (companyCount, roleCount, hasSlug, hasRole) => {
+    const renderCountsBadges = (companyCount, roleCount, hasSlug, hasRole, companyStats, roleStats) => {
       const off = !hasSlug;
       companyCountBadge.classList.toggle('ljt-count-badge--off', off);
       roleCountBadge.classList.toggle('ljt-count-badge--off', off || !hasRole);
       companyCountBadge.textContent = hasSlug ? `C:${companyCount}` : 'C:-';
+      if (hasSlug) {
+        companyCountBadge.textContent = `C:${companyCount}=❌${companyStats.skip}+✅${companyStats.applied}`;
+      }
       roleCountBadge.textContent = (hasSlug && hasRole) ? `R:${roleCount}` : 'R:-';
       companyCountBadge.title = hasSlug
-        ? `Tracked jobs (status != None) in company slug "${resolvedCompanySlug}": ${companyCount}`
+        ? `Tracked jobs (status != None) in company slug "${resolvedCompanySlug}": ${companyCount} (Skip:${companyStats.skip}, Applied:${companyStats.applied}, Seen:${companyStats.seen}, To Apply:${companyStats.toApply})`
         : 'Company slug missing';
       roleCountBadge.title = (hasSlug && hasRole)
-        ? `Tracked jobs (status != None) with same company+title: ${roleCount}`
+        ? `Tracked jobs (status != None) with same company+title: ${roleCount} (Seen:${roleStats.seen}, To Apply:${roleStats.toApply}, Applied:${roleStats.applied}, Skip:${roleStats.skip})`
         : 'Role counter unavailable';
     };
 
     const refreshCounts = () => {
       const hasSlug = !!resolvedCompanySlug;
       const hasRole = !!resolvedRoleTitle;
+      const emptyStats = { seen: 0, toApply: 0, applied: 0, skip: 0 };
       if (!hasSlug) {
-        renderCountsBadges(0, 0, false, hasRole);
+        renderCountsBadges(0, 0, false, hasRole, emptyStats, emptyStats);
         return;
       }
       chrome.storage.local.get(null, all => {
         let companyCount = 0;
         let roleCount = 0;
+        const companyStats = { seen: 0, toApply: 0, applied: 0, skip: 0 };
+        const roleStats = { seen: 0, toApply: 0, applied: 0, skip: 0 };
         const seenIdentity = new Set();
+        const addStat = (stats, status) => {
+          if (status === 'Seen') stats.seen += 1;
+          else if (status === 'To Apply') stats.toApply += 1;
+          else if (status === 'Applied') stats.applied += 1;
+          else if (status === 'Skip') stats.skip += 1;
+        };
         Object.entries(all).forEach(([key, val]) => {
           if (!isJobDataKey(key)) return;
           if (!val || !val.status || val.status === 'None') return;
@@ -449,11 +461,13 @@
           if (seenIdentity.has(identity)) return;
           seenIdentity.add(identity);
           companyCount += 1;
+          addStat(companyStats, val.status);
           if (hasRole && normalizeText(val.title || '') === resolvedRoleTitle) {
             roleCount += 1;
+            addStat(roleStats, val.status);
           }
         });
-        renderCountsBadges(companyCount, roleCount, true, hasRole);
+        renderCountsBadges(companyCount, roleCount, true, hasRole, companyStats, roleStats);
       });
     };
     panel._ljtRefreshCounts = refreshCounts;
