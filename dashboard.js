@@ -70,6 +70,7 @@
             id:        val.id || '',
             title:     val.title    || fb.title    || '',
             company:   val.company  || fb.company  || '',
+            company_slug: val.company_slug || '',
             location:  val.location || fb.location || '',
             workplace: val.workplace || fb.workplace || '',
           };
@@ -179,8 +180,12 @@
     const firstSeen = formatDateTime(job.seen_at_first);
     const lastSeen = formatDateTime(job.seen_at_last || job.seen_at);
 
-    const metaParts = [job.company, job.location, job.workplace].filter(Boolean);
-    const meta = esc(metaParts.join(' · '));
+    const companyText = esc(job.company || '');
+    const companyMeta = (job.company && job.company_slug)
+      ? `<a class="job-company-link" href="https://www.linkedin.com/company/${encodeURIComponent(job.company_slug)}/" target="_blank" rel="noopener noreferrer">${companyText}</a>`
+      : companyText;
+    const metaParts = [companyMeta, esc(job.location || ''), esc(job.workplace || '')].filter(Boolean);
+    const meta = metaParts.join(' · ');
 
     const titleText = job.title ? esc(job.title) : '<span class="no-title">Unknown Position</span>';
     const titleHtml = job.id

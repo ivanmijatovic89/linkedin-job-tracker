@@ -589,6 +589,17 @@ body::before {
   min-width: 0;
 }
 
+.job-company-link {
+  color: var(--text);
+  text-decoration: none;
+  text-underline-offset: 2px;
+}
+
+.job-company-link:hover {
+  color: var(--accent);
+  text-decoration: underline;
+}
+
 .job-right {
   display: flex;
   align-items: center;

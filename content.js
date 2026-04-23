@@ -93,14 +93,27 @@
     return `${LJT_IDX_PREFIX}${t}||${c}||${l}||${w}`;
   }
 
-  function buildMeta({ id, title, company, location, workplace }) {
+  function buildMeta({ id, title, company, company_slug, location, workplace }) {
     const meta = {};
     if (id) meta.id = id;
     if (title) meta.title = title;
     if (company) meta.company = company;
+    if (company_slug) meta.company_slug = company_slug;
     if (location) meta.location = location;
     if (workplace) meta.workplace = workplace;
     return meta;
+  }
+
+  function extractCompanySlugFromHref(href) {
+    if (!href) return '';
+    let path = String(href).trim();
+    try {
+      path = new URL(path, location.origin).pathname;
+    } catch (_) {
+      // fallback for malformed values
+    }
+    const m = path.match(/\/company\/([^/?#]+)/i);
+    return m ? normalizeKeyPart(decodeURIComponent(m[1])) : '';
   }
 
   // ── Storage ───────────────────────────────────────────────────────────────
@@ -811,10 +824,15 @@
 
       // Company link may be outside the container (in a header above) — walk up from title anchor
       let company = '';
+      let companySlug = '';
       let companySearch = a.parentElement;
       for (let i = 0; i < 10 && companySearch && companySearch !== document.body; i++) {
         const cl = companySearch.querySelector('a[href*="/company/"]');
-        if (cl && cl.textContent.trim()) { company = normalizeText(cl.textContent); break; }
+        if (cl) {
+          if (cl.textContent.trim()) company = normalizeText(cl.textContent);
+          companySlug = extractCompanySlugFromHref(cl.getAttribute('href'));
+          break;
+        }
         companySearch = companySearch.parentElement;
       }
 
@@ -824,7 +842,7 @@
       if (!fingerprintKey) return;
       const panelKey = resolvePrimaryKey({ fingerprintKey, jobNumericId: numericId });
       if (!panelKey) return;
-      const meta = buildMeta({ id: numericId, title: jobTitle, company, location, workplace });
+      const meta = buildMeta({ id: numericId, title: jobTitle, company, company_slug: companySlug, location, workplace });
       upsertJobLink(numericId, fingerprintKey);
 
       if (injectedJobIds.has(numericId) && !container.querySelector('.ljt-panel')) {
