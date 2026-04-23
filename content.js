@@ -358,10 +358,12 @@
     // Small ID badge on panel ("ID 123..." / "NO ID")
     const idBadge = document.createElement('span');
     idBadge.className = 'ljt-job-id';
-    const initialId = jobNumericId || meta?.id || getJobIdFromStorageKey(jobId) || '';
+    let resolvedJobNumericId = String(jobNumericId || meta?.id || getJobIdFromStorageKey(jobId) || '').trim();
+    const initialId = resolvedJobNumericId;
     const renderIdBadge = (idValue) => {
       const normalized = String(idValue || '').trim();
       const hasId = /^\d+$/.test(normalized);
+      if (hasId) resolvedJobNumericId = normalized;
       idBadge.classList.toggle('ljt-job-id--on', hasId);
       idBadge.classList.toggle('ljt-job-id--off', !hasId);
       idBadge.textContent = hasId ? `ID ${normalized}` : 'NO ID';
@@ -412,7 +414,7 @@
           seen_at: seenAtLast || seenAtFirst || null,
           seen_at_first: seenAtFirst,
           seen_at_last: seenAtLast,
-        }, meta, { fingerprintKey, jobNumericId });
+        }, meta, { fingerprintKey, jobNumericId: resolvedJobNumericId });
       });
     }
 
@@ -425,7 +427,7 @@
           seen_at: seenAtLast || seenAtFirst || null,
           seen_at_first: seenAtFirst,
           seen_at_last: seenAtLast,
-        }, meta, { fingerprintKey, jobNumericId });
+        }, meta, { fingerprintKey, jobNumericId: resolvedJobNumericId });
       });
     }
 
