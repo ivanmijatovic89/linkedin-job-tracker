@@ -33,7 +33,15 @@ You stop re-reading jobs you've already dismissed. You spend your time only on w
 - **Inline status panel** on every job card — set status and rating without opening a new tab
 - **5 statuses**: None, 🎯 To Apply, 👁 Seen, ✅ Applied, 🗑 Skip — each with a distinct color
 - **Star rating** — rate jobs 0–5 from within the card
+- **Company blacklist** — mark/unmark companies directly from panels; blacklisted cards get a dedicated visual style and dashboard section
+- **Stable job identity with `jobId`** — sync uses `ljt_id__<jobId>` as primary key with fingerprint compatibility
+- **Company intelligence badges in panels**:
+  - `C:<total>=❌<skip>+✅<applied>` for the same company (`company_slug`)
+  - `R:<total>` for same company + same role (`title`), with detailed breakdown in tooltip
+- **Company slug extraction** — stores `company_slug` from LinkedIn company URL
 - **Dashboard** — dedicated page with search, filtering, sorting, grouping, and stats
+- **Dashboard company links** — when `company_slug` exists, company name links to LinkedIn company page
+- **Seen timestamps** — tracks both first seen and last seen; dashboard sort uses last seen
 - **Optional background tinting** — color-code job cards and detail panels by status (off by default, toggle in Settings)
 - **Live sync** — status changes reflect instantly across all open panels
 - **Persistent storage** — all data saved locally via `chrome.storage.local`, no account needed
@@ -54,7 +62,12 @@ You stop re-reading jobs you've already dismissed. You spend your time only on w
 
 ### On LinkedIn
 
-Each job card gets a small inline panel with a **status dropdown** and **star rating**:
+Each job card gets a small inline panel with:
+- **status dropdown**
+- **star rating**
+- **company blacklist toggle**
+- **ID badge** (`ID <jobId>` / `NO ID`)
+- **company/role counters** (`C` and `R`)
 
 | Status | Icon | Meaning |
 |---|---|---|
@@ -67,6 +80,8 @@ Each job card gets a small inline panel with a **status dropdown** and **star ra
 Changes save instantly.
 
 > **Auto-Seen:** When you click a job and the right-side detail panel loads, if the job has no status (or `None`), it is automatically marked as **👁 Seen** and saved. Jobs that already have a status are never overwritten by this.
+>
+> Auto-Seen also updates **last seen** so "Newest first" reflects recent opens.
 
 ### Dashboard
 
@@ -79,6 +94,9 @@ Click the extension icon to open the dashboard:
 - **Filter by status** — show only jobs with a specific status
 - **Sort** — newest, oldest, title, company, or rating
 - **Group** — toggle grouping by status
+- **Company links** — company names are clickable when slug is available
+- **Seen date/time** — cards show date and time
+- **Company blacklist section** — searchable list with quick unblacklist action
 - **Settings** (⚙ gear icon) — configure background color tinting and data management:
   - *Color left panel cards* — background tint on job cards in the search list
   - *Color right panel* — background tint on the job detail view
@@ -109,19 +127,47 @@ linkedin-chrome-addon/
 
 ## Storage Schema
 
-All data is stored in `chrome.storage.local`. Job entries use a fingerprint key:
+All data is stored in `chrome.storage.local`.
+
+Job data now uses:
+- **Primary key:** `ljt_id__<jobId>` (when LinkedIn job ID is known)
+- **Compatibility key:** `ljt_idx__<title>||<company>||<location>||<workplace>`
+- **Bridge maps:** `ljt_map_id__<jobId>` and `ljt_map_fp__<fingerprintKey>`
+- **Blacklist keys:** `ljt_bl__<normalized_company>`
 
 ```json
 {
-  "ljt_idx__<title>||<company>||<location>||<workplace>": {
+  "ljt_id__4405246964": {
     "status": "Applied",
     "rating": 4,
     "seen_at": 1712345678901,
-    "id": "4381854620",
+    "seen_at_first": 1712300000000,
+    "seen_at_last": 1712345678901,
+    "id": "4405246964",
     "title": "Lead Software Engineer",
     "company": "Acme Corp",
+    "company_slug": "acme-corp",
     "location": "New York, NY",
     "workplace": "remote"
+  },
+  "ljt_idx__lead software engineer||acme corp||new york, ny||remote": {
+    "status": "Applied",
+    "rating": 4,
+    "seen_at": 1712345678901,
+    "seen_at_first": 1712300000000,
+    "seen_at_last": 1712345678901,
+    "id": "4405246964",
+    "title": "Lead Software Engineer",
+    "company": "Acme Corp",
+    "company_slug": "acme-corp",
+    "location": "New York, NY",
+    "workplace": "remote"
+  },
+  "ljt_map_id__4405246964": "ljt_idx__lead software engineer||acme corp||new york, ny||remote",
+  "ljt_map_fp__ljt_idx__lead software engineer||acme corp||new york, ny||remote": "4405246964",
+  "ljt_bl__acme corp": {
+    "company": "Acme Corp",
+    "created_at": 1712340000000
   },
   "ljt_settings": {
     "colorLeft": false,
