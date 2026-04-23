@@ -175,6 +175,32 @@
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='8' height='5' viewBox='0 0 8 5'%3E%3Cpath d='M0 0l4 5 4-5z' fill='%23fff'/%3E%3C/svg%3E");
 }
 
+.ljt-job-id {
+  margin-left: 2px;
+  padding: 1px 5px;
+  border-radius: 3px;
+  border: 1px solid #d1d5db;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1.2;
+  white-space: nowrap;
+  color: #6b7280;
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.ljt-job-id.ljt-job-id--on {
+  color: #065f46;
+  border-color: rgba(16, 185, 129, 0.45);
+  background: rgba(16, 185, 129, 0.12);
+}
+
+.ljt-job-id.ljt-job-id--off {
+  color: #64748b;
+  border-color: rgba(148, 163, 184, 0.4);
+  background: rgba(148, 163, 184, 0.1);
+}
+
 /* ── Blacklisted card — black overrides any status color ───────────────────── */
 
 .ljt-card-blacklist {

@@ -17,7 +17,7 @@
   // ── Storage ───────────────────────────────────────────────────────────────
 
   function parseKeyFallback(key) {
-    const match = key.match(/^ljt_idx__(.+)$/);
+    const match = key.match(new RegExp(`^${LJT_IDX_PREFIX}(.+)$`));
     if (!match) return {};
     const parts = match[1].split('||');
     return {
@@ -31,8 +31,11 @@
   async function loadAll() {
     return new Promise(resolve => {
       chrome.storage.local.get(null, all => {
-        const jobs = [];
+        const jobsByIdentity = new Map();
         const bl = [];
+        const fpToId = new Map(); // "ljt_idx__..." -> "4404274683"
+
+        // Pass 1: collect blacklist + fingerprint->id bridge map
         for (const [key, val] of Object.entries(all)) {
           if (key.startsWith(LJT_BL_PREFIX)) {
             if (val && val.company) {
@@ -44,23 +47,52 @@
             }
             continue;
           }
-          if (!key.startsWith('ljt_idx__')) continue;
+          if (key.startsWith(LJT_MAP_FP_PREFIX) && typeof val === 'string') {
+            fpToId.set(key.slice(LJT_MAP_FP_PREFIX.length), val);
+          }
+        }
+
+        // Pass 2: load job rows and dedupe
+        for (const [key, val] of Object.entries(all)) {
+          if (key.startsWith(LJT_BL_PREFIX)) continue;
+          if (key.startsWith(LJT_MAP_ID_PREFIX) || key.startsWith(LJT_MAP_FP_PREFIX)) continue;
+          if (!key.startsWith(LJT_IDX_PREFIX) && !key.startsWith(LJT_ID_PREFIX)) continue;
           if (!val || !val.status || val.status === 'None') continue;
 
           const fb = parseKeyFallback(key);
-          jobs.push({
+          const record = {
             key,
             status:    val.status,
             rating:    typeof val.rating === 'number' ? val.rating : 0,
-            seen_at:   val.seen_at || 0,
+            seen_at_first: val.seen_at_first || val.seen_at || 0,
+            seen_at_last:  val.seen_at_last  || val.seen_at || 0,
+            seen_at:       val.seen_at_last  || val.seen_at || 0, // legacy alias
             id:        val.id || '',
             title:     val.title    || fb.title    || '',
             company:   val.company  || fb.company  || '',
             location:  val.location || fb.location || '',
             workplace: val.workplace || fb.workplace || '',
-          });
+          };
+          if (!record.id && key.startsWith(LJT_IDX_PREFIX)) {
+            const mappedId = fpToId.get(key);
+            if (mappedId) record.id = mappedId;
+          }
+
+          const identity = record.id ? `id:${record.id}` : key;
+          const existing = jobsByIdentity.get(identity);
+          const isIdRecord = key.startsWith(LJT_ID_PREFIX);
+          const existingIsIdRecord = !!existing?.key?.startsWith?.(LJT_ID_PREFIX);
+          const recordLast = record.seen_at_last || 0;
+          const existingLast = existing?.seen_at_last || 0;
+          if (
+            !existing ||
+            recordLast > existingLast ||
+            (recordLast === existingLast && isIdRecord && !existingIsIdRecord)
+          ) {
+            jobsByIdentity.set(identity, record);
+          }
         }
-        resolve({ jobs, blacklist: bl });
+        resolve({ jobs: [...jobsByIdentity.values()], blacklist: bl });
       });
     });
   }
@@ -88,8 +120,8 @@
 
     result.sort((a, b) => {
       switch (filters.sort) {
-        case 'newest':  return (b.seen_at || 0) - (a.seen_at || 0);
-        case 'oldest':  return (a.seen_at || 0) - (b.seen_at || 0);
+        case 'newest':  return (b.seen_at_last || 0) - (a.seen_at_last || 0);
+        case 'oldest':  return (a.seen_at_last || 0) - (b.seen_at_last || 0);
         case 'title':   return a.title.localeCompare(b.title);
         case 'company': return a.company.localeCompare(b.company);
         case 'rating':  return b.rating - a.rating;
@@ -115,6 +147,22 @@
     });
   }
 
+  function formatDateTime(ts) {
+    if (!ts) return '';
+    const d = new Date(ts);
+    const date = d.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+    });
+    const time = d.toLocaleTimeString('en-US', {
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    });
+    return `${date} ${time}`;
+  }
+
   function renderStars(rating) {
     let html = '';
     for (let i = 1; i <= 5; i++) {
@@ -128,7 +176,8 @@
   function renderCard(job) {
     const opt = ljtStatusOption(job.status);
     const sc = opt.cssKey;
-    const date = formatDate(job.seen_at);
+    const firstSeen = formatDateTime(job.seen_at_first);
+    const lastSeen = formatDateTime(job.seen_at_last || job.seen_at);
 
     const metaParts = [job.company, job.location, job.workplace].filter(Boolean);
     const meta = esc(metaParts.join(' · '));
@@ -140,6 +189,9 @@
 
     const pillLabel = opt.icon ? `${opt.icon} ${esc(job.status)}` : esc(job.status);
     const blCls = blacklistSet.has(ljtNormalizeCompany(job.company)) ? ' is-blacklisted' : '';
+    const hasId = !!job.id;
+    const idBadgeClass = hasId ? 'has-id' : 'no-id';
+    const idBadgeLabel = hasId ? 'ID' : 'NO ID';
 
     return `
       <div class="job-card status-${sc}${blCls}">
@@ -153,7 +205,17 @@
             <div class="job-meta">${meta || '<span style="color:var(--text-3)">No details</span>'}</div>
             <div class="job-right">
               <span class="job-status-pill status-${sc}-pill">${pillLabel}</span>
-              ${date ? `<span class="job-date">${date}</span>` : ''}
+              <span class="job-id-badge ${idBadgeClass}">${idBadgeLabel}</span>
+              ${
+                lastSeen
+                  ? `<span class="job-date">${lastSeen}</span>`
+                  : ''
+              }
+              ${
+                firstSeen
+                  ? `<span class="job-date-first">${firstSeen === lastSeen ? '1st=last' : `1st ${firstSeen}`}</span>`
+                  : ''
+              }
             </div>
           </div>
         </div>

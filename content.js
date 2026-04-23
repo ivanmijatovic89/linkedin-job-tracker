@@ -5,9 +5,12 @@
 
   // ── Config ────────────────────────────────────────────────────────────────
   let ljtConfig = { colorLeft: false, colorRight: false };
+  const DEFAULT_DATA = { status: 'None', rating: 0 };
 
   // ── Blacklist cache ───────────────────────────────────────────────────────
   const blacklistSet = new Set();
+  const jobIdToFp = new Map(); // "4404274683" -> "ljt_idx__..."
+  const fpToJobId = new Map(); // "ljt_idx__..." -> "4404274683"
 
   function isBlacklisted(company) {
     if (!company) return false;
@@ -87,7 +90,7 @@
     const l = normalizeKeyPart(location);
     const w = normalizeKeyPart(workplace);
     if (!t || !c) return '';
-    return `ljt_idx__${t}||${c}||${l}||${w}`;
+    return `${LJT_IDX_PREFIX}${t}||${c}||${l}||${w}`;
   }
 
   function buildMeta({ id, title, company, location, workplace }) {
@@ -102,20 +105,127 @@
 
   // ── Storage ───────────────────────────────────────────────────────────────
 
-  function loadData(key) {
-    return new Promise(resolve =>
-      chrome.storage.local.get(key, res => {
-        const found = res[key];
-        console.log('[LJT] load', key, found ? `→ ${found.status}` : '→ MISS (None)');
-        resolve(found ?? { status: 'None', rating: 0 });
-      })
-    );
+  function jobIdKey(jobNumericId) {
+    return jobNumericId ? `${LJT_ID_PREFIX}${jobNumericId}` : '';
   }
 
-  function saveData(key, value, meta = null) {
+  function mapIdKey(jobNumericId) {
+    return jobNumericId ? `${LJT_MAP_ID_PREFIX}${jobNumericId}` : '';
+  }
+
+  function mapFpKey(fingerprintKey) {
+    return fingerprintKey ? `${LJT_MAP_FP_PREFIX}${fingerprintKey}` : '';
+  }
+
+  function getJobIdFromStorageKey(key) {
+    if (!key || !key.startsWith(LJT_ID_PREFIX)) return '';
+    return key.slice(LJT_ID_PREFIX.length);
+  }
+
+  function readJobIdFromUrl(url = location.href) {
+    const raw = String(url || '');
+    const mPath = raw.match(/\/jobs\/view\/(\d+)/);
+    if (mPath) return mPath[1];
+    try {
+      const u = new URL(raw, location.origin);
+      const q = u.searchParams.get('currentJobId') || '';
+      const mQuery = q.match(/^(\d+)$/);
+      if (mQuery) return mQuery[1];
+    } catch (_) {
+      // ignore parse errors and fall through
+    }
+    return '';
+  }
+
+  function extractJobIdFromHref(href) {
+    if (!href) return '';
+    const m = String(href).match(/\/jobs\/view\/(\d+)/);
+    return m ? m[1] : '';
+  }
+
+  function extractJobIdFromCard(card) {
+    const anchor = card?.querySelector?.('a[href*="/jobs/view/"]');
+    if (!anchor) return '';
+    return extractJobIdFromHref(anchor.getAttribute('href'));
+  }
+
+  function resolvePrimaryKey({ fingerprintKey = '', jobNumericId = '' } = {}) {
+    if (jobNumericId) return jobIdKey(jobNumericId);
+    if (fingerprintKey) {
+      const mappedId = fpToJobId.get(fingerprintKey);
+      if (mappedId) return jobIdKey(mappedId);
+    }
+    return fingerprintKey;
+  }
+
+  function upsertJobLink(jobNumericId, fingerprintKey) {
+    if (!jobNumericId || !fingerprintKey) return;
+    const prevFp = jobIdToFp.get(jobNumericId) || '';
+    const prevId = fpToJobId.get(fingerprintKey) || '';
+    jobIdToFp.set(jobNumericId, fingerprintKey);
+    fpToJobId.set(fingerprintKey, jobNumericId);
+    if (prevFp === fingerprintKey && prevId === jobNumericId) return;
+    chrome.storage.local.set({
+      [mapIdKey(jobNumericId)]: fingerprintKey,
+      [mapFpKey(fingerprintKey)]: jobNumericId,
+    });
+  }
+
+  function isJobDataKey(key) {
+    return key.startsWith(LJT_ID_PREFIX) || key.startsWith(LJT_IDX_PREFIX);
+  }
+
+  function loadData(primaryKey, { fingerprintKey = '', jobNumericId = '' } = {}) {
+    const keys = [];
+    const push = k => {
+      if (!k || keys.includes(k)) return;
+      keys.push(k);
+    };
+
+    push(primaryKey);
+    if (jobNumericId) {
+      push(jobIdKey(jobNumericId));
+      push(jobIdToFp.get(jobNumericId));
+    }
+    if (fingerprintKey) {
+      push(fingerprintKey);
+      const mappedId = fpToJobId.get(fingerprintKey);
+      if (mappedId) push(jobIdKey(mappedId));
+    }
+
+    if (!keys.length) return Promise.resolve({ ...DEFAULT_DATA });
+
+    return new Promise(resolve => {
+      chrome.storage.local.get(keys, res => {
+        const hitKey = keys.find(k => !!res[k]);
+        if (!hitKey) {
+          resolve({ ...DEFAULT_DATA });
+          return;
+        }
+        const found = res[hitKey];
+        if (isJobDataKey(hitKey)) {
+          const hitJobId = getJobIdFromStorageKey(hitKey);
+          if (hitJobId && fingerprintKey) upsertJobLink(hitJobId, fingerprintKey);
+        }
+        resolve(found ?? { ...DEFAULT_DATA });
+      });
+    });
+  }
+
+  function saveData(primaryKey, value, meta = null, { fingerprintKey = '', jobNumericId = '' } = {}) {
     const payload = meta ? { ...value, ...meta } : value;
-    console.log('[LJT] save', key, payload);
-    chrome.storage.local.set({ [key]: payload });
+    const writes = {};
+    const effectiveJobId = jobNumericId || meta?.id || '';
+    const idKey = jobIdKey(effectiveJobId);
+    const primary = primaryKey || idKey || fingerprintKey;
+
+    if (!primary) return;
+    writes[primary] = payload;
+    if (idKey && idKey !== primary) writes[idKey] = payload;
+    if (fingerprintKey && fingerprintKey !== primary) writes[fingerprintKey] = payload;
+
+    chrome.storage.local.set(writes);
+    upsertJobLink(effectiveJobId, fingerprintKey);
   }
 
   // Allow manual clear from page console:
@@ -142,7 +252,7 @@
 
     // Handle blacklist changes — update local set and reapply classes on all visible cards
     let blacklistTouched = false;
-    Object.entries(changes).forEach(([key, { newValue, oldValue }]) => {
+    Object.entries(changes).forEach(([key, { newValue }]) => {
       if (!key.startsWith(LJT_BL_PREFIX)) return;
       blacklistTouched = true;
       const norm = key.slice(LJT_BL_PREFIX.length);
@@ -151,9 +261,26 @@
     });
     if (blacklistTouched) reapplyAllBlacklistClasses();
 
+    // Keep in-memory id<->fingerprint bridge in sync with storage updates
+    Object.entries(changes).forEach(([key, { newValue }]) => {
+      if (key.startsWith(LJT_MAP_ID_PREFIX)) {
+        const jobNumericId = key.slice(LJT_MAP_ID_PREFIX.length);
+        if (newValue) jobIdToFp.set(jobNumericId, String(newValue));
+        else jobIdToFp.delete(jobNumericId);
+        return;
+      }
+      if (key.startsWith(LJT_MAP_FP_PREFIX)) {
+        const fingerprintKey = key.slice(LJT_MAP_FP_PREFIX.length);
+        if (newValue) fpToJobId.set(fingerprintKey, String(newValue));
+        else fpToJobId.delete(fingerprintKey);
+      }
+    });
+
     Object.entries(changes).forEach(([key, { newValue }]) => {
       if (!newValue) return;
       if (key.startsWith(LJT_BL_PREFIX)) return;
+      if (key.startsWith(LJT_MAP_ID_PREFIX) || key.startsWith(LJT_MAP_FP_PREFIX)) return;
+      if (!isJobDataKey(key)) return;
       document.querySelectorAll(`.ljt-panel[data-ljt-id="${CSS.escape(key)}"]`).forEach(panel => {
         panel._ljtSync?.(newValue);
       });
@@ -170,10 +297,9 @@
     });
   }
 
-  function buildPanel(jobId, { status, rating, seen_at } = {}, { readOnly = false, fingerprintKey = '', meta = null, onStatusChange = null, company = '' } = {}) {
+  function buildPanel(jobId, { status, rating, seen_at, seen_at_first, seen_at_last } = {}, { readOnly = false, fingerprintKey = '', jobNumericId = '', meta = null, onStatusChange = null, company = '' } = {}) {
     const safeStatus = status || 'None';
     const safeRating = Number.isFinite(rating) ? rating : 0;
-    console.log('[LJT] buildPanel', jobId, 'status=', safeStatus, 'company=', company);
     const panel = document.createElement('div');
     panel.className = 'ljt-panel';
     panel.setAttribute('data-ljt-id', jobId);
@@ -229,6 +355,21 @@
     panel.appendChild(blSel);
     panel._ljtSyncBlacklist = renderBlSel;
 
+    // Small ID badge on panel ("ID 123..." / "NO ID")
+    const idBadge = document.createElement('span');
+    idBadge.className = 'ljt-job-id';
+    const initialId = jobNumericId || meta?.id || getJobIdFromStorageKey(jobId) || '';
+    const renderIdBadge = (idValue) => {
+      const normalized = String(idValue || '').trim();
+      const hasId = /^\d+$/.test(normalized);
+      idBadge.classList.toggle('ljt-job-id--on', hasId);
+      idBadge.classList.toggle('ljt-job-id--off', !hasId);
+      idBadge.textContent = hasId ? `ID ${normalized}` : 'NO ID';
+      idBadge.title = hasId ? `LinkedIn Job ID: ${normalized}` : 'LinkedIn Job ID not available';
+    };
+    renderIdBadge(initialId);
+    panel.appendChild(idBadge);
+
     if (!readOnly) {
       blSel.addEventListener('change', () => {
         if (!company) return;
@@ -244,7 +385,8 @@
     }
 
     let curRating = safeRating;
-    let seenAt = seen_at || null;
+    let seenAtFirst = seen_at_first || seen_at || null;
+    let seenAtLast = seen_at_last || seen_at || null;
 
     // Stop all pointer/click events from bubbling out of the panel into the card's button handler
     ['mousedown', 'pointerdown', 'click', 'mouseup', 'pointerup', 'dblclick'].forEach(evt =>
@@ -258,24 +400,37 @@
     if (!readOnly) {
       sel.addEventListener('change', () => {
         sel.className = `ljt-select ljt-s-${ljtStatusCssKey(sel.value)}`;
-        if (sel.value === 'Seen' && !seenAt) {
-          seenAt = Date.now();
+        if (sel.value === 'Seen') {
+          const now = Date.now();
+          if (!seenAtFirst) seenAtFirst = now;
+          seenAtLast = now;
         }
         onStatusChange?.(sel.value);
-        saveData(jobId, { status: sel.value, rating: curRating, seen_at: seenAt }, meta);
+        saveData(jobId, {
+          status: sel.value,
+          rating: curRating,
+          seen_at: seenAtLast || seenAtFirst || null,
+          seen_at_first: seenAtFirst,
+          seen_at_last: seenAtLast,
+        }, meta, { fingerprintKey, jobNumericId });
       });
     }
 
     if (!readOnly) {
       ratingSel.addEventListener('change', () => {
         curRating = +ratingSel.value;
-        saveData(jobId, { status: sel.value, rating: curRating, seen_at: seenAt }, meta);
+        saveData(jobId, {
+          status: sel.value,
+          rating: curRating,
+          seen_at: seenAtLast || seenAtFirst || null,
+          seen_at_first: seenAtFirst,
+          seen_at_last: seenAtLast,
+        }, meta, { fingerprintKey, jobNumericId });
       });
     }
 
     // Expose a sync method so the storage listener can update this panel from outside
-    panel._ljtSync = ({ status: s, rating: r, seen_at: sa }) => {
-      console.log('[LJT] _ljtSync', jobId, sel.value, '→', s);
+    panel._ljtSync = ({ status: s, rating: r, seen_at: sa, seen_at_first: saf, seen_at_last: sal, id }) => {
       if (sel.value !== s) {
         sel.value = s;
         sel.className = `ljt-select ljt-s-${ljtStatusCssKey(s)}`;
@@ -285,8 +440,18 @@
         curRating = r;
         ratingSel.value = String(curRating);
       }
-      if (sa && seenAt !== sa) {
-        seenAt = sa;
+      if (saf && seenAtFirst !== saf) {
+        seenAtFirst = saf;
+      }
+      if (sal && seenAtLast !== sal) {
+        seenAtLast = sal;
+      } else if (sa && seenAtLast !== sa) {
+        // Backward compatibility for older records that only have seen_at.
+        seenAtLast = sa;
+        if (!seenAtFirst) seenAtFirst = sa;
+      }
+      if (id) {
+        renderIdBadge(id);
       }
     };
 
@@ -296,7 +461,7 @@
   // ── Injection state ───────────────────────────────────────────────────────
 
   const injecting = new Set();
-  const compKeyToJobId = new Map(); // componentkey UUID → jobId (survives element replacement)
+  const compKeyToState = new Map(); // componentkey UUID -> { panelKey, fingerprintKey, jobNumericId, meta }
   const watchedCards = new WeakSet(); // cards with per-card observers attached
   const injectedJobIds = new Set();   // right-panel numeric IDs already shown
 
@@ -368,13 +533,32 @@
     if (injecting.has(card)) return;
     injecting.add(card);
 
-    const data = await loadData(jobId);
-    if (opts?.autoSeen && (data?.status === 'None' || !data?.status)) {
-      if (!data.seen_at) data.seen_at = Date.now();
-      data.status = 'Seen';
-      saveData(jobId, data, opts.meta);
+    const data = await loadData(jobId, {
+      fingerprintKey: opts?.fingerprintKey || '',
+      jobNumericId: opts?.jobNumericId || '',
+    });
+    if (opts?.autoSeen) {
+      const next = { ...data };
+      if (!next.status || next.status === 'None') {
+        next.status = 'Seen';
+      }
+      const now = Date.now();
+      if (!next.seen_at_first) {
+        next.seen_at_first = next.seen_at_last || next.seen_at || now;
+      }
+      // "Newest first" in dashboard tracks the latest open action.
+      next.seen_at_last = now;
+      next.seen_at = now; // legacy alias
+      saveData(jobId, next, opts.meta, {
+        fingerprintKey: opts?.fingerprintKey || '',
+        jobNumericId: opts?.jobNumericId || '',
+      });
+      Object.assign(data, next);
     } else if (opts?.meta) {
-      saveData(jobId, data, opts.meta);
+      saveData(jobId, data, opts.meta, {
+        fingerprintKey: opts?.fingerprintKey || '',
+        jobNumericId: opts?.jobNumericId || '',
+      });
     }
 
     if (!card.isConnected || card.querySelector('.ljt-panel')) {
@@ -499,14 +683,21 @@
 
   function processLeftCards() {
     // Pass 1: re-check all known componentkeys — find them regardless of role/tag changes
-    compKeyToJobId.forEach((jobId, compKey) => {
+    compKeyToState.forEach((state, compKey) => {
       const card = document.querySelector(`[componentkey="${compKey}"]`);
       if (!card) return; // scrolled away
+      const opts = {
+        readOnly: false,
+        fingerprintKey: state.fingerprintKey || '',
+        jobNumericId: state.jobNumericId || '',
+        meta: state.meta || null,
+        panelSide: 'left',
+      };
       if (card.querySelector('.ljt-panel')) {
-        watchCard(card, jobId, { readOnly: false, fingerprintKey: jobId });
+        watchCard(card, state.panelKey, opts);
         return;
       }
-      if (!injecting.has(card)) inject(card, jobId, { readOnly: false, fingerprintKey: jobId, panelSide: 'left' });
+      if (!injecting.has(card)) inject(card, state.panelKey, opts);
     });
 
     // Pass 2: discover new cards via dismiss button
@@ -521,7 +712,7 @@
       if (!card || card === document.body) return;
 
       const compKey = card.getAttribute('componentkey') || '';
-      if (compKey && compKeyToJobId.has(compKey)) return; // already handled in pass 1
+      if (compKey && compKeyToState.has(compKey)) return; // already handled in pass 1
 
       const label = btn.getAttribute('aria-label') || '';
       const jobTitle = normalizeText(label.replace(/^Dismiss /, '').replace(/ job$/, ''));
@@ -530,11 +721,15 @@
       const { company, location, workplace } = extractLeftFields(card, jobTitle);
       const fingerprintKey = buildFingerprintKey(jobTitle, company, location, workplace);
       if (!fingerprintKey) return;
+      const jobNumericId = extractJobIdFromCard(card);
+      const panelKey = resolvePrimaryKey({ fingerprintKey, jobNumericId });
+      if (!panelKey) return;
 
-      const meta = buildMeta({ title: jobTitle, company, location, workplace });
-      if (compKey) compKeyToJobId.set(compKey, fingerprintKey);
+      const meta = buildMeta({ id: jobNumericId, title: jobTitle, company, location, workplace });
+      if (jobNumericId) upsertJobLink(jobNumericId, fingerprintKey);
+      if (compKey) compKeyToState.set(compKey, { panelKey, fingerprintKey, jobNumericId, meta });
       if (!card.querySelector('.ljt-panel') && !injecting.has(card)) {
-        inject(card, fingerprintKey, { readOnly: false, fingerprintKey, meta, panelSide: 'left' });
+        inject(card, panelKey, { readOnly: false, fingerprintKey, jobNumericId, meta, panelSide: 'left' });
       }
     });
   }
@@ -546,22 +741,44 @@
     if (clickListenerAttached) return;
     clickListenerAttached = true;
     document.addEventListener('click', e => {
-      const card = e.target.closest('[componentkey][role="button"]') || e.target.closest('[componentkey]');
+      // Only react to actual left-list cards (they have a Dismiss button inside).
+      const candidate = e.target.closest('[componentkey][role="button"]') || e.target.closest('[componentkey]');
+      if (!candidate) return;
+      const hasDismiss = !!candidate.querySelector('button[aria-label^="Dismiss "]');
+      if (!hasDismiss) return;
+      const card = candidate;
       if (!card) return;
       const compKey = card.getAttribute('componentkey') || '';
       if (!compKey) return;
-      setTimeout(() => {
+      const urlBeforeClick = location.href;
+      const cardJobIdFromHref = extractJobIdFromCard(card);
+      let attempts = 0;
+      const syncActiveCard = () => {
+        // Prefer jobId embedded in the clicked card itself. URL is fallback only.
+        const urlChanged = location.href !== urlBeforeClick;
+        const activeJobId = cardJobIdFromHref || (urlChanged ? readJobIdFromUrl() : '');
+        if (!activeJobId && attempts < 14) {
+          attempts += 1;
+          setTimeout(syncActiveCard, 60);
+          return;
+        }
+
         const btn = card.querySelector('button[aria-label^="Dismiss "]');
         const label = btn?.getAttribute('aria-label') || '';
         const jobTitle = normalizeText(label.replace(/^Dismiss /, '').replace(/ job$/, ''));
+        if (!jobTitle) return;
         const { company, location, workplace } = extractLeftFields(card, jobTitle);
         const fingerprintKey = buildFingerprintKey(jobTitle, company, location, workplace);
         if (!fingerprintKey) return;
 
-        const meta = buildMeta({ title: jobTitle, company, location, workplace });
-        compKeyToJobId.set(compKey, fingerprintKey);
-        rekeyPanel(card, fingerprintKey, { readOnly: false, fingerprintKey, meta, panelSide: 'left' });
-      }, 0);
+        const panelKey = resolvePrimaryKey({ fingerprintKey, jobNumericId: activeJobId });
+        if (!panelKey) return;
+        const meta = buildMeta({ id: activeJobId, title: jobTitle, company, location, workplace });
+        if (activeJobId) upsertJobLink(activeJobId, fingerprintKey);
+        compKeyToState.set(compKey, { panelKey, fingerprintKey, jobNumericId: activeJobId, meta });
+        rekeyPanel(card, panelKey, { readOnly: false, fingerprintKey, jobNumericId: activeJobId, meta, panelSide: 'left' });
+      };
+      syncActiveCard();
     }, true);
   }
 
@@ -603,7 +820,10 @@
       const { location, workplace } = extractLocationWorkplaceFromTexts(texts, jobTitle, company, container);
       const fingerprintKey = buildFingerprintKey(jobTitle, company, location, workplace);
       if (!fingerprintKey) return;
+      const panelKey = resolvePrimaryKey({ fingerprintKey, jobNumericId: numericId });
+      if (!panelKey) return;
       const meta = buildMeta({ id: numericId, title: jobTitle, company, location, workplace });
+      upsertJobLink(numericId, fingerprintKey);
 
       if (injectedJobIds.has(numericId) && !container.querySelector('.ljt-panel')) {
         injectedJobIds.delete(numericId);
@@ -616,7 +836,14 @@
 
       injectedJobIds.clear();
       injectedJobIds.add(numericId);
-      inject(container, fingerprintKey, { readOnly: false, fingerprintKey, meta, autoSeen: true, panelSide: 'right' });
+      inject(container, panelKey, {
+        readOnly: false,
+        fingerprintKey,
+        jobNumericId: numericId,
+        meta,
+        autoSeen: true,
+        panelSide: 'right',
+      });
     });
   }
 
@@ -653,8 +880,14 @@
   // Load config + blacklist before first scan so colors are applied correctly on page load
   chrome.storage.local.get(null, res => {
     if (res.ljt_settings) ljtConfig = { ...ljtConfig, ...res.ljt_settings };
-    Object.keys(res).forEach(k => {
+    Object.entries(res).forEach(([k, v]) => {
       if (k.startsWith(LJT_BL_PREFIX)) blacklistSet.add(k.slice(LJT_BL_PREFIX.length));
+      if (k.startsWith(LJT_MAP_ID_PREFIX) && typeof v === 'string') {
+        jobIdToFp.set(k.slice(LJT_MAP_ID_PREFIX.length), v);
+      }
+      if (k.startsWith(LJT_MAP_FP_PREFIX) && typeof v === 'string') {
+        fpToJobId.set(k.slice(LJT_MAP_FP_PREFIX.length), v);
+      }
     });
     scanAll();
     setTimeout(scanAll, 1500);

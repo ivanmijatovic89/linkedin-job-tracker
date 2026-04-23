@@ -56,6 +56,10 @@ function ljtStatusCssKey(value) {
 }
 
 // ── Company Blacklist ─────────────────────────────────────────────────────────
+const LJT_IDX_PREFIX = 'ljt_idx__';
+const LJT_ID_PREFIX = 'ljt_id__';
+const LJT_MAP_ID_PREFIX = 'ljt_map_id__';
+const LJT_MAP_FP_PREFIX = 'ljt_map_fp__';
 const LJT_BL_PREFIX = 'ljt_bl__';
 
 const LJT_BLACKLIST_CONFIG = {
